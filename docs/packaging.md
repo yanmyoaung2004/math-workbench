@@ -6,16 +6,20 @@ From `math-engine/` with the venv active:
 
 ```powershell
 uv pip install pyinstaller
-pyinstaller --onefile --console --name workbench-engine sidecar_entry.py
+pyinstaller --onefile --console --name workbench-engine --distpath dist-sidecar sidecar_entry.py
 $triple = rustc --print host-tuple  # x86_64-pc-windows-msvc
 Copy-Item dist-sidecar/workbench-engine.exe `
   ../src-tauri/binaries/workbench-engine-$triple.exe -Force
 ```
 
-Verified 2026-10-06: 30 MB onefile, protocol smoke test passes
-(`solve_linear` → exact `6`; `sample_graph` → segments). Build on the OS you
-ship (PyInstaller is not a cross-compiler). The sidecar stays `--console` so
-stdio pipes work; Tauri spawns it hidden.
+Verified: 30.1 MB onefile, protocol smoke test passes
+(`solve_linear` → exact `6`; `sample_graph` → segments). Always smoke-test
+with an isolated data dir so the real user history stays clean:
+
+```powershell
+$env:WORKBENCH_DATA_DIR = "$env:TEMP\sidecar-smoke"
+'{"op": "solve_linear", "input": "2x + 5 = 17"}' | .\dist-sidecar\workbench-engine.exe
+```
 
 ## Desktop app
 
@@ -32,15 +36,16 @@ cd ../src-tauri
 cmd /c '"C:\Program Files (x86)\...\VsDevCmd.bat" -arch=amd64 -host_arch=amd64 >nul && cargo build --release'
 ```
 
-Verified 2026-10-06: `math-workbench.exe` (11.8 MB) links clean; co-located
+Verified: `math-workbench.exe` (12.7 MB) links clean; co-located
 with the triple-named sidecar it launches, responds, and shows its window
 (process alive + responding + titled, then closed). Capabilities load —
 a malformed `capabilities/default.json` would fail this smoke test.
 
 `tauri.conf.json` declares `externalBin: ["binaries/workbench-engine"]` — the
 CLI bundles `src-tauri/binaries/workbench-engine-<triple>.exe` automatically.
-Capabilities (`capabilities/default.json`) scope `shell:allow-spawn`,
-`shell:allow-stdin-write`, and `shell:allow-kill` to that sidecar only.
+Capabilities (`capabilities/default.json`) scope `shell:allow-spawn` and
+`shell:allow-stdin-write` to that sidecar only (`shell:allow-kill` is
+correctly unscoped).
 
 ### Not yet done (explicit gap)
 

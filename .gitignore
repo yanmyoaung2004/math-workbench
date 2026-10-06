@@ -25,6 +25,7 @@ dist-ssr/
 # Tauri (future)
 src-tauri/target/
 src-tauri/binaries/
+src-tauri/gen/
 *.AppImage
 *.deb
 *.dmg
