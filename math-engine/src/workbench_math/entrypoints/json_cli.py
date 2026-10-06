@@ -15,6 +15,13 @@ from dataclasses import asdict
 from pathlib import Path
 
 from ..adapters.sqlite_history import SqliteHistory
+from ..adapters.latexing import (
+    latex_analysis,
+    latex_of,
+    latex_point,
+    latex_solution,
+    latex_table,
+)
 from ..adapters.sympy_parser import SymPyParser
 from ..adapters.sympy_solver import SymPySolver
 from ..application.solve_inequality import solve_inequality
@@ -55,7 +62,7 @@ def data_dir() -> Path:
 
 
 def _solution_to_response(op: str, solution: Solution, raw: str) -> dict:
-    payload = asdict(solution)
+    payload = asdict(latex_solution(solution))
     if op in _SAVED_OPS:
         try:
             store = SqliteHistory(data_dir() / "history.db")
@@ -144,20 +151,20 @@ def handle(request: dict) -> dict:
                     "result": asdict(sample(req, parser))}
         if op == "analyze_graph":
             return {"ok": True, "op": op, "interpretation": raw,
-                    "result": asdict(analyze(raw, parser))}
+                    "result": asdict(latex_analysis(analyze(raw, parser)))}
         if op == "table_values":
             start, end, step = (request.get(k, "") for k in ("start", "end", "step"))
             if not all(isinstance(v, str) for v in (start, end, step)):
                 return _error_response(op, ValidationError.code, "Send start/end/step as strings.")
             return {"ok": True, "op": op, "interpretation": raw,
-                    "result": asdict(table_values(raw, start, end, step, parser))}
+                    "result": asdict(latex_table(table_values(raw, start, end, step, parser)))}
         if op == "solve_intersection":
             inputs = request.get("inputs", [])
             if not isinstance(inputs, list) or len(inputs) != 2:
                 return _error_response(op, ValidationError.code, "Send inputs as a list of two functions.")
             points = intersect(inputs[0], inputs[1], parser)
             return {"ok": True, "op": op, "interpretation": " ; ".join(inputs),
-                    "result": {"points": [asdict(p) for p in points]}}
+                    "result": {"points": [asdict(latex_point(p)) for p in points]}}
         if op == "solve_linear":
             return _solution_to_response(op, solve_linear(raw, parser, solver, domain), raw)
         if op == "solve_quadratic":
@@ -175,8 +182,14 @@ def handle(request: dict) -> dict:
             except (TypeError, ValueError):
                 return _error_response(op, ValidationError.code, "limit must be an integer.")
             store = SqliteHistory(data_dir() / "history.db")
+            entries = []
+            for entry in store.list_recent(limit):
+                payload = asdict(entry)
+                payload["interpretation_latex"] = latex_of(entry.interpretation)
+                payload["exact_latex"] = [latex_of(e) for e in entry.exact]
+                entries.append(payload)
             return {"ok": True, "op": op, "interpretation": "",
-                    "result": {"entries": [asdict(e) for e in store.list_recent(limit)]}}
+                    "result": {"entries": entries}}
         if op == "history_clear":
             store = SqliteHistory(data_dir() / "history.db")
             return {"ok": True, "op": op, "interpretation": "",
@@ -194,8 +207,13 @@ def handle(request: dict) -> dict:
                     op, ValidationError.code,
                     f"Choose topic in {list(TOPICS)} and difficulty in {list(DIFFICULTIES)}.")
             questions = generate_questions(topic, difficulty, n, seed, parser, solver)
+            enriched = [
+                {**asdict(q), "prompt_latex": latex_of(q.prompt),
+                 "expected_latex": [latex_of(e) for e in q.expected]}
+                for q in questions
+            ]
             return {"ok": True, "op": op, "interpretation": "",
-                    "result": {"questions": [asdict(q) for q in questions]}}
+                    "result": {"questions": enriched}}
         if op == "practice_score":
             raw_attempts = request.get("attempts", [])
             if not isinstance(raw_attempts, list):

@@ -30,6 +30,8 @@ class Question:
     prompt: str  # e.g. "3x + 7 = 25"
     expected: tuple[str, ...]  # engine-verified exact answers
     op: str  # solve_linear | solve_quadratic
+    prompt_latex: str = ""
+    expected_latex: tuple[str, ...] = ()
 
 
 def _ri(rng: random.Random, lo: int, hi: int, nonzero: bool = False) -> int:

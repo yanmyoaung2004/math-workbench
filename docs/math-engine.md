@@ -40,6 +40,11 @@ Practice (deterministic, offline): `practice_generate` (`topic`, `difficulty`,
 and `practice_score` (`attempts` → per-topic mastery % with hint penalty +
 weakest-topic recommendation; transparent, no ML).
 
+Presentation LaTeX: every math string ships a `*_latex` twin rendered by SymPy
+(`2*x**2` → `2 x^{2}`, `1/2` → `\frac{1}{2}`), structure-preserving so operand
+arithmetic survives; unparseable text passes through unchanged. The UI typesets
+with KaTeX and falls back to plain text — LaTeX never breaks math delivery.
+
 History (offline-first, SQLite): every successful solve/transform auto-saves to
 `$WORKBENCH_DATA_DIR/history.db` (default `~/.math-workbench/history.db`, schema
 v1, failures never break math). `history_list` (`limit`, newest-first) and

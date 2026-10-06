@@ -29,6 +29,11 @@ Solver (5 modes, interpretation echo, steps, L1–L5 hints), Graph (Plotly +
 analysis + Fraction-exact table), Practice (generate/reveal/self-mark/score),
 History (list/clear), Settings (theme, engine).
 
+Math rendering: `src/ui/Math.tsx` typesets the backend `*_latex` fields with
+KaTeX (fonts bundled, offline-safe) and falls back to the plain canonical
+string when LaTeX is missing or unusable — programmer notation (`*`, `**`)
+never reaches students.
+
 ## Checks
 
 `npx tsc -b` (strict, noUnusedLocals/Parameters) + `npm run build` +

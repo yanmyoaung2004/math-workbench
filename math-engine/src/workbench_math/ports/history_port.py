@@ -15,6 +15,8 @@ class HistoryEntry:
     interpretation: str
     exact: tuple[str, ...]
     verification: str
+    interpretation_latex: str = ""
+    exact_latex: tuple[str, ...] = ()
 
 
 class HistoryPort(abc.ABC):

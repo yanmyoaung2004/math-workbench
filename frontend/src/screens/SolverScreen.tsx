@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { getEngine } from "../engine/index.ts";
 import { EngineError, type SolutionResult } from "../engine/types.ts";
 import { Button, Card, EngineInput, ErrorBanner, GhostButton } from "../ui/primitives.tsx";
+import Math from "../ui/Math.tsx";
 
 type Op = "solve_linear" | "solve_quadratic" | "solve_inequality" | "solve_system" | "simplify";
 
@@ -96,12 +97,18 @@ export default function SolverScreen() {
           <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Understood as
           </p>
-          <p className="math text-lg">{result.interpretation}</p>
+          <p className="text-lg"><Math tex={result.interpretation_latex} fallback={result.interpretation} /></p>
           <p className="mt-3 text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Answer
           </p>
-          <p className="math text-2xl font-semibold">
-            {result.exact.length > 0 ? result.exact.join("   ") : result.interpretation}
+          <p className="text-2xl font-semibold">
+            {result.exact_latex.length > 0
+              ? result.exact_latex.map((tex, i) => (
+                  <span key={i} className="mr-4">
+                    <Math tex={tex} fallback={result.exact[i]} />
+                  </span>
+                ))
+              : <Math tex={result.interpretation_latex} fallback={result.interpretation} />}
           </p>
           {result.verification !== "verified" && (
             <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">
@@ -118,8 +125,10 @@ export default function SolverScreen() {
             {result.steps.map((step, i) => (
               <li key={i} className="step-card rounded-r-lg bg-slate-50 py-2 pl-4 pr-3 dark:bg-white/5">
                 <p className="text-sm font-medium">Step {i + 1}: {step.explanation}</p>
-                <p className="math mt-1 text-sm text-slate-600 dark:text-slate-300">
-                  {step.before} &nbsp;→&nbsp; {step.after}
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                  <Math tex={step.before_latex} fallback={step.before} />
+                  <span className="mx-2">→</span>
+                  <Math tex={step.after_latex} fallback={step.after} />
                 </p>
               </li>
             ))}

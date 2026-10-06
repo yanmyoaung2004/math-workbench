@@ -9,12 +9,16 @@ export interface EngineStep {
   rule: string;
   explanation: string;
   verification: string;
+  before_latex: string;
+  after_latex: string;
+  operand_latex: string;
 }
 
 export interface Binding {
   variable: string;
   exact: string;
   approximate: string;
+  exact_latex: string;
 }
 
 export interface SolutionResult {
@@ -25,6 +29,8 @@ export interface SolutionResult {
   verification: string;
   domain_info: { domain: string; excluded: string[] };
   bindings: Binding[];
+  interpretation_latex: string;
+  exact_latex: string[];
 }
 
 export interface GraphSegment {
@@ -43,6 +49,7 @@ export interface FeaturePoint {
   x: number;
   y: number;
   exact: string;
+  exact_latex: string;
 }
 
 export interface AnalysisResult {
@@ -54,6 +61,8 @@ export interface AnalysisResult {
   vertical_asymptotes: number[];
   horizontal_asymptote: string;
   gradient: string;
+  axis_latex: string;
+  gradient_latex: string;
 }
 
 export interface TableResult {
@@ -61,6 +70,8 @@ export interface TableResult {
   xs: string[];
   ys: string[];
   ys_approx: Array<number | null>;
+  xs_latex: string[];
+  ys_latex: string[];
 }
 
 export interface Question {
@@ -69,6 +80,8 @@ export interface Question {
   prompt: string;
   expected: string[];
   op: string;
+  prompt_latex: string;
+  expected_latex: string[];
 }
 
 export interface HistoryEntry {
@@ -79,6 +92,8 @@ export interface HistoryEntry {
   interpretation: string;
   exact: string[];
   verification: string;
+  interpretation_latex: string;
+  exact_latex: string[];
 }
 
 export type EngineOk = {

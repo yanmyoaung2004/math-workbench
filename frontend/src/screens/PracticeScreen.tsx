@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { getEngine } from "../engine/index.ts";
 import { EngineError, type Question } from "../engine/types.ts";
 import { Button, Card, ErrorBanner, GhostButton } from "../ui/primitives.tsx";
+import Math from "../ui/Math.tsx";
 import { cn } from "../ui/cn.ts";
 
 const TOPICS = ["linear", "quadratic"];
@@ -76,14 +77,22 @@ export default function PracticeScreen() {
           <ol className="flex flex-col gap-3">
             {questions.map((q, i) => (
               <li key={`${q.prompt}-${i}`} className="rounded-lg bg-slate-50 p-3 dark:bg-white/5">
-                <p className="math font-medium">
-                  {i + 1}. {q.prompt}
+                <p className="font-medium">
+                  {i + 1}. <Math tex={q.prompt_latex} fallback={q.prompt} />
                 </p>
                 <div className="mt-2 flex flex-col gap-2 text-sm sm:flex-row sm:flex-wrap sm:items-center">
                   <GhostButton onClick={() => setRevealed((r) => ({ ...r, [i]: !r[i] }))}>
                     {revealed[i] ? "Hide answer" : "Reveal answer"}
                   </GhostButton>
-                  {revealed[i] && <span className="math font-semibold">{q.expected.join(", ")}</span>}
+                  {revealed[i] && (
+                    <span className="font-semibold">
+                      {q.expected_latex.map((tex, j) => (
+                        <span key={j} className="mr-2">
+                          <Math tex={tex} fallback={q.expected[j]} />
+                        </span>
+                      ))}
+                    </span>
+                  )}
                   <span className="flex gap-1 sm:ml-auto">
                     <GhostButton
                       onClick={() => setMarks((m) => ({ ...m, [i]: true }))}

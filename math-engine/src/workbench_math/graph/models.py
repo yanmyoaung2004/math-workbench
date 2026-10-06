@@ -37,6 +37,7 @@ class FeaturePoint:
     x: float
     y: float
     exact: str = ""
+    exact_latex: str = ""
 
 
 @dataclass(frozen=True)
@@ -49,6 +50,8 @@ class AnalysisResult:
     vertical_asymptotes: tuple[float, ...] = ()
     horizontal_asymptote: str = ""
     gradient: str = ""
+    axis_latex: str = ""
+    gradient_latex: str = ""
 
 
 @dataclass(frozen=True)
@@ -57,3 +60,5 @@ class TableResult:
     xs: tuple[str, ...]  # exact strings
     ys: tuple[str, ...]  # exact strings (or "undefined")
     ys_approx: tuple[float | None, ...]
+    xs_latex: tuple[str, ...] = ()
+    ys_latex: tuple[str, ...] = ()

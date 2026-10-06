@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getEngine } from "../engine/index.ts";
 import { EngineError } from "../engine/types.ts";
 import { Button, Card, ErrorBanner } from "../ui/primitives.tsx";
+import Math from "../ui/Math.tsx";
 
 export default function HistoryScreen() {
   const client = useQueryClient();
@@ -31,8 +32,14 @@ export default function HistoryScreen() {
       {(history.data?.entries ?? []).map((entry) => (
         <Card key={entry.id} className="p-4">
           <p className="text-xs uppercase tracking-wide text-slate-500">{entry.op}</p>
-          <p className="math mt-0.5">{entry.input}</p>
-          <p className="math mt-1 font-semibold">{entry.exact.join(", ")}</p>
+          <p className="mt-0.5"><Math tex={entry.interpretation_latex} fallback={entry.interpretation} /></p>
+          <p className="mt-1 font-semibold">
+            {entry.exact_latex.map((tex, i) => (
+              <span key={i} className="mr-3">
+                <Math tex={tex} fallback={entry.exact[i]} />
+              </span>
+            ))}
+          </p>
           <p className="mt-1 text-xs text-slate-400">{new Date(entry.timestamp).toLocaleString()}</p>
         </Card>
       ))}

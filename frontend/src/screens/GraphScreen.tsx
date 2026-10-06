@@ -4,6 +4,7 @@ import Plotly from "plotly.js-dist-min";
 import { getEngine } from "../engine/index.ts";
 import { EngineError, type AnalysisResult, type SampleResult } from "../engine/types.ts";
 import { Button, Card, EngineInput, ErrorBanner } from "../ui/primitives.tsx";
+import Math from "../ui/Math.tsx";
 import { cn } from "../ui/cn.ts";
 
 function PlotView({ data, dark }: { data: SampleResult; dark: boolean }) {
@@ -134,17 +135,21 @@ export default function GraphScreen() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-slate-500">
-                      <th className="math px-2 py-1">x</th>
-                      {table.data.xs.map((x) => (
-                        <th key={x} className="math px-2 py-1 font-medium">{x}</th>
+                      <th className="px-2 py-1">x</th>
+                      {table.data.xs.map((x, i) => (
+                        <th key={x} className="px-2 py-1 font-medium">
+                          <Math tex={table.data.xs_latex[i]} fallback={x} />
+                        </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     <tr className="border-t border-slate-200 dark:border-white/10">
-                      <td className="math px-2 py-1 font-medium">y</td>
+                      <td className="px-2 py-1 font-medium">y</td>
                       {table.data.ys.map((y, i) => (
-                        <td key={i} className={cn("math px-2 py-1", y === "undefined" && "text-slate-400")}>{y}</td>
+                        <td key={i} className={cn("px-2 py-1", y === "undefined" && "text-slate-400")}>
+                          <Math tex={table.data.ys_latex[i]} fallback={y} />
+                        </td>
                       ))}
                     </tr>
                   </tbody>
@@ -159,8 +164,11 @@ export default function GraphScreen() {
 }
 
 function AnalysisPanel({ analysis }: { analysis: AnalysisResult }) {
-  const rows: [string, string][] = [
-    ["Gradient", analysis.gradient || "—"],
+  const mathRows: [string, string, string][] = [
+    ["Gradient", analysis.gradient, analysis.gradient_latex],
+    ["Axis of symmetry", analysis.axis_of_symmetry || "—", analysis.axis_latex],
+  ];
+  const plain: [string, string][] = [
     ["Roots", analysis.roots.length > 0 ? analysis.roots.map((p) => `(${p.x}, ${p.y})`).join(", ") : "none"],
     ["Y-intercept", analysis.y_intercept ? `(${analysis.y_intercept.x}, ${analysis.y_intercept.y})` : "none"],
     [
@@ -169,7 +177,6 @@ function AnalysisPanel({ analysis }: { analysis: AnalysisResult }) {
         ? analysis.turning_points.map((p) => `(${p.x}, ${p.y})`).join(", ")
         : "none",
     ],
-    ["Axis of symmetry", analysis.axis_of_symmetry || "—"],
     [
       "Vertical asymptotes",
       analysis.vertical_asymptotes.length > 0 ? analysis.vertical_asymptotes.join(", ") : "none",
@@ -180,7 +187,13 @@ function AnalysisPanel({ analysis }: { analysis: AnalysisResult }) {
     <Card className="p-5">
       <h2 className="mb-2 font-semibold">Analysis <span className="text-xs font-normal text-slate-500">(engine-computed)</span></h2>
       <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
-        {rows.map(([k, v]) => (
+        {mathRows.map(([k, v, tex]) => (
+          <div key={k} className="flex justify-between gap-4 border-b border-slate-100 py-1.5 dark:border-white/5">
+            <dt className="text-slate-500 dark:text-slate-400">{k}</dt>
+            <dd className="text-right"><Math tex={tex} fallback={v} /></dd>
+          </div>
+        ))}
+        {plain.map(([k, v]) => (
           <div key={k} className="flex justify-between gap-4 border-b border-slate-100 py-1.5 dark:border-white/5">
             <dt className="text-slate-500 dark:text-slate-400">{k}</dt>
             <dd className="math text-right">{v}</dd>

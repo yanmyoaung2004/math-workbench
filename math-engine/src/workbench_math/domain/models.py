@@ -41,6 +41,10 @@ class Step:
     rule: str  # e.g. subtraction_property_of_equality
     explanation: str  # GCSE wording, no advanced terms by default
     verification: str = Verification.VERIFIED.value
+    # Presentation LaTeX filled at the entrypoint boundary (adapters/latexing).
+    before_latex: str = ""
+    after_latex: str = ""
+    operand_latex: str = ""
 
 
 @dataclass(frozen=True)
@@ -56,6 +60,7 @@ class Binding:
     variable: str
     exact: str
     approximate: str
+    exact_latex: str = ""
 
 
 @dataclass(frozen=True)
@@ -69,3 +74,5 @@ class Solution:
     verification: str = Verification.VERIFIED.value
     domain_info: DomainInfo = DomainInfo(domain=Domain.REALS.value)
     bindings: tuple[Binding, ...] = ()
+    interpretation_latex: str = ""
+    exact_latex: tuple[str, ...] = ()
