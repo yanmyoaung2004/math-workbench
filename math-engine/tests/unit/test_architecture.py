@@ -22,7 +22,16 @@ ALLOWED = {
     "ports": {"ports", "domain"},
     "application": {"application", "ports", "domain"},
     "adapters": None,  # unrestricted (sympy lives here)
+    # graph/ is an engine-internal subdomain under the same discipline: it may
+    # use domain/ports plus the shared sympy plumbing in adapters/_sympy_common,
+    # but never adapter classes, application use-cases, or entrypoints.
+    "graph": {"graph", "domain", "ports", "adapters"},
     "entrypoints": {"entrypoints", "adapters", "application", "ports", "domain"},
+}
+# Third-party distributions each layer may import (stdlib always allowed).
+THIRD_PARTY = {
+    "adapters": None,  # any (sympy, numpy, ...)
+    "graph": {"sympy", "numpy"},
 }
 
 
@@ -50,7 +59,11 @@ def test_import_direction():
                     if top == "workbench_math":
                         violations.append(f"{path}: absolute intra-package import")
                     elif top not in STDLIB and top != "__future__":
-                        violations.append(f"{path}: non-stdlib import {top!r}")
+                        allowed_tp = THIRD_PARTY.get(layer)
+                        if allowed_tp is None:
+                            continue  # unrestricted layer (adapters)
+                        if top not in allowed_tp:
+                            violations.append(f"{path}: non-stdlib import {top!r}")
             elif isinstance(node, ast.ImportFrom):
                 if node.level:
                     target = _resolve_relative(path, node.level, node.module)
@@ -62,6 +75,12 @@ def test_import_direction():
                         violations.append(
                             f"{path}: {layer} must not depend on {dep_layer}"
                         )
+                    # graph/ may only touch shared plumbing, never adapter classes
+                    if layer == "graph" and dep_layer == "adapters":
+                        if target[1:2] != ("_sympy_common",):
+                            violations.append(
+                                f"{path}: graph may only use adapters._sympy_common"
+                            )
                 elif node.module:
                     top = node.module.split(".")[0]
                     if top == "workbench_math":
@@ -73,16 +92,20 @@ def test_import_direction():
                                 f"{path}: {layer} must not depend on {dep_layer}"
                             )
                     elif top not in STDLIB and top != "__future__":
-                        if layer != "adapters":
+                        allowed_tp = THIRD_PARTY.get(layer)
+                        if allowed_tp is None:
+                            continue  # unrestricted layer (adapters)
+                        if top not in allowed_tp:
                             violations.append(f"{path}: non-stdlib import {top!r}")
     assert not violations, "\n".join(violations)
 
 
-def test_sympy_confined_to_adapters():
-    """Only adapters/ may import the sympy distribution (AST-precise)."""
+def test_sympy_confined_to_engine_layers():
+    """Only adapters/ and graph/ may import sympy or numpy (AST-precise)."""
     offenders: list[str] = []
     for path in sorted(ROOT.rglob("*.py")):
-        if "adapters" in path.relative_to(ROOT).parts:
+        parts = path.relative_to(ROOT).parts
+        if "adapters" in parts or "graph" in parts:
             continue
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
@@ -92,4 +115,4 @@ def test_sympy_confined_to_adapters():
             elif isinstance(node, ast.ImportFrom):
                 if (node.module or "").split(".")[0] == "sympy":
                     offenders.append(str(path))
-    assert not offenders, f"sympy leaked outside adapters/: {offenders}"
+    assert not offenders, f"sympy/numpy leaked outside adapters+graph: {offenders}"

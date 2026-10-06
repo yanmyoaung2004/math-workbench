@@ -55,6 +55,14 @@ No microservices. No network for core math. See ADR-0003 for why sidecar over lo
 Rationale: SymPy stays swappable; domain/steps testable without SymPy installed
 (unit tier uses fakes); sidecar protocol depends on DTOs, not SymPy objects.
 
+### Graph subdomain (`math-engine/.../graph/`)
+
+Engine-internal subdomain under the same discipline: `graph/models.py` holds
+stdlib-only DTOs; `graph/sampler.py` (+ analysis/tables later) may import
+sympy+numpy and the shared plumbing `adapters/_sympy_common` only — never
+adapter classes, application use-cases, or entrypoints. Enforced by
+`tests/unit/test_architecture.py` (`ALLOWED["graph"]`, `THIRD_PARTY`).
+
 ## 3. Request flow (the non-negotiable pipeline)
 
 ```text
