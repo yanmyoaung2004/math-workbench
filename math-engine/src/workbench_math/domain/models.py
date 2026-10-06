@@ -50,6 +50,15 @@ class DomainInfo:
 
 
 @dataclass(frozen=True)
+class Binding:
+    """One named solution value, e.g. x = 3 (systems; also filled for single)."""
+
+    variable: str
+    exact: str
+    approximate: str
+
+
+@dataclass(frozen=True)
 class Solution:
     """Use-case output: exact + approximate kept separate (FR-ALG-5)."""
 
@@ -59,3 +68,4 @@ class Solution:
     steps: tuple[Step, ...]
     verification: str = Verification.VERIFIED.value
     domain_info: DomainInfo = DomainInfo(domain=Domain.REALS.value)
+    bindings: tuple[Binding, ...] = ()

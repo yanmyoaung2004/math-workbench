@@ -12,7 +12,7 @@ from ..domain.exceptions import (
     NoSolutionError,
     UnsolvableError,
 )
-from ..domain.models import Domain, DomainInfo, Solution, Verification
+from ..domain.models import Binding, Domain, DomainInfo, Solution, Verification
 from ..domain.steps import make_step
 from ..domain.verify import solution_holds, solution_self_consistent
 from ..ports.parser_port import ParserPort
@@ -74,4 +74,8 @@ def solve_linear(
         steps=steps,
         verification=verification,
         domain_info=DomainInfo(domain=domain.value),
+        bindings=tuple(
+            Binding(variable=facts.symbol, exact=s, approximate=a)
+            for s, a in zip(facts.solutions, facts.approximate)
+        ),
     )

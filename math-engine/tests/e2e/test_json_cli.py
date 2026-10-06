@@ -34,6 +34,17 @@ def test_solve_parse_and_error_round_trip():
     assert unknown["ok"] is False and unknown["error"]["code"] == "VALIDATION_ERROR"
 
 
+def test_system_round_trip():
+    responses = run_requests([
+        {"op": "solve_system", "equations": ["2x + y = 7", "x - y = 2"]},
+        {"op": "solve_system", "equations": ["x + y = 1"]},
+    ])
+    ok, bad = responses
+    assert ok["ok"] is True
+    assert [(b["variable"], b["exact"]) for b in ok["result"]["bindings"]] == [("x", "3"), ("y", "1")]
+    assert bad["ok"] is False and bad["error"]["code"] == "VALIDATION_ERROR"
+
+
 def test_malformed_json_line_does_not_kill_stream():
     proc = subprocess.run(
         CMD, input='{"op": "solve_linear", "input": "x = 6"}\nnot json\n',

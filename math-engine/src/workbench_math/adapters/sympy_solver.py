@@ -9,7 +9,7 @@ independent substitution check, step-chain strings built from real SymPy objects
 from __future__ import annotations
 
 from sympy import Eq, N, Poly, S, Symbol, expand, factor, factor_list, simplify, sqrt, sstr
-from sympy.solvers.solveset import solveset
+from sympy.solvers.solveset import linsolve, solveset
 
 from ..domain.exceptions import UnsolvableError, ValidationError
 from ..domain.models import Domain, Expression
@@ -17,6 +17,7 @@ from ..ports.solver_port import (
     LinearFacts,
     QuadraticFacts,
     SolverPort,
+    SystemFacts,
     TransformFacts,
 )
 from ._sympy_common import canonical, eq_str, has_bracket_product, to_sympy
@@ -371,6 +372,131 @@ class SymPySolver(SolverPort):
             chain.append((op, operand, branched, final))
         return tuple(chain)
 
+    # -- linear systems (2x2) ----------------------------------------------
+    def solve_system(
+        self, exprs: tuple[Expression, ...], domain: Domain = Domain.REALS
+    ) -> SystemFacts:
+        if len(exprs) != 2:
+            raise ValidationError(
+                f"Send exactly two equations (got {len(exprs)}). Larger systems "
+                "are out of V1 scope."
+            )
+        interps = []
+        eqs = []
+        for expr in exprs:
+            if expr.kind != "equation":
+                raise ValidationError(
+                    "Each system entry must be an equation with '='."
+                )
+            lhs_raw, rhs_raw = expr.canonical.split("=", 1)
+            eqs.append((to_sympy(lhs_raw), to_sympy(rhs_raw)))
+            interps.append(expr.canonical)
+        symbols = sorted(
+            set().union(*(l.free_symbols | r.free_symbols for l, r in eqs)),
+            key=lambda s: s.name,
+        )
+        if len(symbols) < 2:
+            raise ValidationError(
+                "That has only one variable — use solve_linear or solve_quadratic."
+            )
+        if len(symbols) > 2:
+            raise UnsolvableError(
+                "I solve two-variable systems in V1; larger systems are out of scope."
+            )
+        u, v = symbols
+        try:
+            result = linsolve(
+                (Eq(eqs[0][0], eqs[0][1]), Eq(eqs[1][0], eqs[1][1])), (u, v)
+            )
+        except Exception as exc:
+            raise UnsolvableError(
+                "I couldn't solve that system automatically."
+            ) from exc
+        interpretation = "; ".join(interps)
+        if result is S.EmptySet:
+            return SystemFacts(
+                variables=(u.name, v.name), bindings=(), set_tag="empty", chain=(),
+                interpretation=interpretation,
+            )
+        tup = next(iter(result))
+        if any(s.free_symbols for s in tup):
+            return SystemFacts(
+                variables=(u.name, v.name), bindings=(), set_tag="infinite", chain=(),
+                interpretation=interpretation,
+            )
+        values = {u.name: sstr(tup[0]), v.name: sstr(tup[1])}
+        bindings = tuple(
+            (name, values[name], str(N(to_sympy(values[name]), 15)))
+            for name in (u.name, v.name)
+        )
+        chain = self._system_chain(interps, eqs, u, v, values)
+        return SystemFacts(
+            variables=(u.name, v.name), bindings=bindings, set_tag="finite",
+            chain=chain, interpretation=interpretation,
+        )
+
+    def _system_chain(self, interps, eqs, u, v, values):
+        """Elimination chain over the joined state "eq1; eq2"."""
+        (l1, r1), (l2, r2) = eqs
+        d1, d2 = expand(l1 - r1), expand(l2 - r2)
+        k1 = Poly(d1, v).nth(1) if Poly(d1, v).degree() == 1 else S.Zero
+        k2 = Poly(d2, v).nth(1) if Poly(d2, v).degree() == 1 else S.Zero
+        chain: list[tuple[str, str, str, str]] = []
+        state = "; ".join(interps)
+
+        def scaled(pair, m):
+            (l, r) = pair
+            return expand(l * m), expand(r * m)
+
+        if k1 == 0 or k2 == 0:
+            # One equation is already single-variable: solve it, substitute.
+            idx = 0 if k1 == 0 else 1
+            l, r = (l1, r1) if idx == 0 else (l2, r2)
+            other = interps[1] if idx == 0 else interps[0]
+            dd = expand(l - r)
+            ku = Poly(dd, u).nth(1)
+            uval = to_sympy(values[u.name])
+            after = f"{eq_str(u, uval)}; {other}"
+            chain.append(("divide_both_sides", canonical(ku), state, after))
+            sl, sr = (l2, r2) if idx == 0 else (l1, r1)
+            sub = (expand(sl.subs(u, uval)), expand(sr.subs(u, uval)))
+            after2 = f"{eq_str(u, uval)}; {eq_str(*sub)}"
+            chain.append(("substitute_back", f"{u.name} = {values[u.name]}", after, after2))
+            dd2 = expand(sub[0] - sub[1])
+            kv = Poly(dd2, v).nth(1)
+            final = f"{eq_str(u, uval)}; {eq_str(v, to_sympy(values[v.name]))}"
+            chain.append(("divide_both_sides", canonical(kv), after2, final))
+            return tuple(chain)
+
+        m1, m2 = abs(k2), abs(k1)
+        s1 = scaled((l1, r1), m1)
+        s2 = scaled((l2, r2), m2)
+        if m1 != 1:
+            after = f"{eq_str(*s1)}; {interps[1]}"
+            chain.append(("scale_equation", canonical(m1), state, after))
+            state = after
+        if m2 != 1:
+            first = state.split("; ", 1)[0]
+            after = f"{first}; {eq_str(*s2)}"
+            chain.append(("scale_equation", canonical(m2), state, after))
+            state = after
+        same_sign = bool(k1 * k2 > 0)
+        new_l = s1[0] - s2[0] if same_sign else s1[0] + s2[0]
+        new_r = s1[1] - s2[1] if same_sign else s1[1] + s2[1]
+        after = f"{eq_str(new_l, new_r)}; {interps[1]}"
+        chain.append(("eliminate_variable", v.name, state, after))
+        ku = Poly(expand(new_l - new_r), u).nth(1)
+        uval = to_sympy(values[u.name])
+        after_u = f"{eq_str(u, uval)}; {interps[1]}"
+        chain.append(("divide_both_sides", canonical(ku), after, after_u))
+        sub = (expand(l2.subs(u, uval)), expand(r2.subs(u, uval)))
+        after2 = f"{eq_str(u, uval)}; {eq_str(*sub)}"
+        chain.append(("substitute_back", f"{u.name} = {values[u.name]}", after_u, after2))
+        kv = Poly(expand(sub[0] - sub[1]), v).nth(1)
+        final = f"{eq_str(u, uval)}; {eq_str(v, to_sympy(values[v.name]))}"
+        chain.append(("divide_both_sides", canonical(kv), after2, final))
+        return tuple(chain)
+
     # -- transforms ---------------------------------------------------------
     def transform(self, expr: Expression, kind: str) -> TransformFacts:
         ops = {"simplify": simplify, "expand": expand, "factorise": factor}
@@ -407,5 +533,19 @@ class SymPySolver(SolverPort):
     def check_identity(self, before: str, after: str) -> bool:
         try:
             return bool(simplify(to_sympy(before) - to_sympy(after)) == 0)
+        except Exception:
+            return False
+
+    def check_system_equality(self, equations, bindings) -> bool:
+        try:
+            sub = {Symbol(var): to_sympy(val) for var, val in bindings}
+            for equation in equations:
+                lhs_raw, rhs_raw = equation.split("=", 1)
+                diff = simplify(
+                    (to_sympy(lhs_raw) - to_sympy(rhs_raw)).subs(sub)
+                )
+                if not bool(diff == 0):
+                    return False
+            return True
         except Exception:
             return False

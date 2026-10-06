@@ -44,3 +44,21 @@ def solution_holds(
 def solution_self_consistent(solution: Solution, final_form: str) -> bool:
     """Steps chain from interpretation to final form (structure, not math)."""
     return check_chain(solution.interpretation, solution.steps, final_form)
+
+
+# (equations, bindings) -> True iff every equation holds under all bindings.
+SystemEqualityFn = Callable[[tuple[str, ...], tuple[tuple[str, str], ...]], bool]
+
+
+def system_holds(
+    equations: tuple[str, ...],
+    bindings: tuple[tuple[str, str], ...],
+    equality: SystemEqualityFn,
+) -> bool:
+    """True iff the bindings satisfy every equation. Never raises."""
+    if not equations or not bindings:
+        return False
+    try:
+        return bool(equality(equations, bindings))
+    except Exception:
+        return False

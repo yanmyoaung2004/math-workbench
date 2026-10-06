@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from ..domain.models import Domain, Expression
 from .parser_port import ParserPort
 
-__all__ = ["LinearFacts", "QuadraticFacts", "TransformFacts", "ParserPort", "SolverPort"]
+__all__ = ["LinearFacts", "QuadraticFacts", "SystemFacts", "TransformFacts", "ParserPort", "SolverPort"]
 
 
 @dataclass(frozen=True)
@@ -64,6 +64,22 @@ class QuadraticFacts:
     interpretation: str
 
 
+@dataclass(frozen=True)
+class SystemFacts:
+    """Algebraic facts about a 2x2 linear system.
+
+    `variables` are sorted names; `bindings` are (variable, exact, approx).
+    `set_tag`: "finite" | "empty" | "infinite". The chain works on the joined
+    state "eq1; eq2" so single-string steps stay continuous.
+    """
+
+    variables: tuple[str, ...]
+    bindings: tuple[tuple[str, str, str], ...]
+    set_tag: str
+    chain: tuple[tuple[str, str, str, str], ...]  # (op, operand, before, after)
+    interpretation: str
+
+
 class SolverPort(abc.ABC):
     @abc.abstractmethod
     def solve_linear(
@@ -89,8 +105,22 @@ class SolverPort(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
+    def check_system_equality(
+        self, equations: tuple[str, ...], bindings: tuple[tuple[str, str], ...]
+    ) -> bool:
+        """Substitute all bindings into every equation; True iff all hold."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def solve_quadratic(
         self, expr: Expression, domain: Domain = Domain.REALS, method: str = "auto"
     ) -> QuadraticFacts:
         """method: auto | factorise | formula | complete_square."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def solve_system(
+        self, exprs: tuple[Expression, ...], domain: Domain = Domain.REALS
+    ) -> SystemFacts:
+        """Two linear equations in two variables (V1)."""
         raise NotImplementedError

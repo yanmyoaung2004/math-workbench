@@ -11,8 +11,9 @@ One request line → one response line. UTF-8, `\n`-terminated.
 
 ```jsonc
 {
-  "op": "solve_linear" | "solve_quadratic" | "simplify" | "expand" | "factorise" | "parse",
-  "input": "2x + 5 = 17",   // raw user string, required
+  "op": "solve_linear" | "solve_quadratic" | "solve_system" | "simplify" | "expand" | "factorise" | "parse",
+  "input": "2x + 5 = 17",   // raw user string, required (except solve_system)
+  "equations": ["2x + y = 7", "x - y = 2"],  // solve_system only: exactly 2
   "domain": "reals",         // optional, default "reals" (GCSE); "complex" opts in
   "method": "auto",          // solve_quadratic only: auto | factorise | formula | complete_square
   "curriculum": "gcse"       // optional, default "gcse"; gates advanced output
@@ -21,7 +22,9 @@ One request line → one response line. UTF-8, `\n`-terminated.
 
 Multi-solution responses join the final step as `"x = r1; x = r2"`; `exact`
 lists each root separately. `NO_SOLUTION` for `x^2+1=0` (reals) carries a
-discriminant hint in the message.
+discriminant hint in the message. System responses add `bindings`:
+`[{"variable": "x", "exact": "3", "approximate": "3.0"}, ...]` (single-variable
+solvers fill one binding each).
 
 ### Success response
 
@@ -138,6 +141,9 @@ called by application — not hidden inside the SymPy adapter (so the check is i
 | `apply_quadratic_formula` | `quadratic_formula` | `x=(-(-5)±√1)/2` |
 | `complete_the_square` | `completing_the_square` | `x²+6x+5=0 → (x+3)²=4` |
 | `take_square_root_pm` | `square_root_property` | `(x+3)²=4 → x+3=±2` |
+| `scale_equation` | `multiplication_property_of_equality` | `2x+y=7 ×3` |
+| `eliminate_variable` | `elimination_method` | `add/subtract to kill y` |
+| `substitute_back` | `substitution_method` | `x=3 into x-y=2` |
 
 Inequality sign-flip (`…reverse the inequality…`) lands with A3.
 

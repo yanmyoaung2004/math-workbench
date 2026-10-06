@@ -85,6 +85,18 @@ EXPLANATIONS: dict[str, tuple[str, str]] = {
         "square_root_property",
         "Take the square root of both sides ({operand}), remembering both signs.",
     ),
+    "scale_equation": (
+        "multiplication_property_of_equality",
+        "Multiply the whole equation by {operand}.",
+    ),
+    "eliminate_variable": (
+        "elimination_method",
+        "Add or subtract the equations to eliminate {operand}.",
+    ),
+    "substitute_back": (
+        "substitution_method",
+        "Substitute {operand} into the other equation.",
+    ),
 }
 
 INEQUALITY_FLIP_NOTE = (
