@@ -16,9 +16,9 @@ export default function HistoryScreen() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold">Calculation history</h2>
-        <Button disabled={clear.isPending} onClick={() => clear.mutate()}>
+        <Button disabled={clear.isPending} onClick={() => clear.mutate()} className="w-full sm:w-auto">
           Clear
         </Button>
       </div>

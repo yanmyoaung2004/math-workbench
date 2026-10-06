@@ -35,7 +35,7 @@ function PlotView({ data, dark }: { data: SampleResult; dark: boolean }) {
       if (ref.current) Plotly.purge(ref.current);
     };
   }, [data, dark]);
-  return <div ref={ref} className="h-80 w-full" role="img" aria-label={`Graph of ${data.interpretation}`} />;
+  return <div ref={ref} className="h-64 w-full min-w-0 sm:h-80" role="img" aria-label={`Graph of ${data.interpretation}`} />;
 }
 
 export default function GraphScreen() {
@@ -70,7 +70,7 @@ export default function GraphScreen() {
           plot.mutate();
         }}
       >
-        <label className="flex-1 basis-56 text-sm">
+        <label className="min-w-0 flex-1 basis-56 text-sm">
           <span className="mb-1 block text-xs uppercase tracking-wide text-slate-500">Function</span>
           <EngineInput value={input} onChange={(e) => setInput(e.target.value)} placeholder="y = x^2 - 4x + 3" />
         </label>
@@ -82,7 +82,7 @@ export default function GraphScreen() {
           <span className="mb-1 block text-xs uppercase tracking-wide text-slate-500">x max</span>
           <EngineInput value={xMax} onChange={(e) => setXMax(e.target.value)} className="w-24 py-2 text-base" />
         </label>
-        <Button type="submit" disabled={plot.isPending}>
+        <Button type="submit" disabled={plot.isPending} className="w-full sm:w-auto">
           {plot.isPending ? "Plotting…" : "Plot"}
         </Button>
       </form>
@@ -127,7 +127,7 @@ export default function GraphScreen() {
                   />
                 </label>
               ))}
-              <Button type="submit" disabled={table.isPending}>Build table</Button>
+              <Button type="submit" disabled={table.isPending} className="w-full sm:w-auto">Build table</Button>
             </form>
             {table.data && (
               <div className="overflow-x-auto">

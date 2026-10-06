@@ -25,8 +25,24 @@ export default function App() {
     document.documentElement.classList.toggle("dark", effectiveTheme(theme) === "dark");
   }, [theme]);
 
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSidebarOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sidebarOpen]);
+
   return (
     <div className="flex h-full bg-slate-50 text-slate-900 dark:bg-ink-950 dark:text-slate-100">
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-10 bg-black/30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
       <aside
         className={cn(
           "z-20 flex w-60 shrink-0 flex-col gap-1 border-r border-slate-200 bg-white p-4",
@@ -71,7 +87,7 @@ export default function App() {
       >
         Menu
       </button>
-      <main className="mx-auto w-full max-w-4xl flex-1 overflow-y-auto p-4 pt-14 md:p-8 md:pt-8">
+      <main className="mx-auto w-full max-w-4xl min-w-0 flex-1 overflow-y-auto p-4 pt-14 sm:p-6 sm:pt-14 md:p-8 md:pt-8">
         {screen === "solver" && <SolverScreen />}
         {screen === "graph" && <GraphScreen />}
         {screen === "practice" && <PracticeScreen />}

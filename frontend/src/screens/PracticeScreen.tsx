@@ -54,7 +54,7 @@ export default function PracticeScreen() {
           </label>
         </div>
         <Button
-          className="mt-4"
+          className="mt-4 w-full sm:w-auto"
           disabled={generate.isPending}
           onClick={() => {
             setRevealed({});
@@ -79,12 +79,12 @@ export default function PracticeScreen() {
                 <p className="math font-medium">
                   {i + 1}. {q.prompt}
                 </p>
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                <div className="mt-2 flex flex-col gap-2 text-sm sm:flex-row sm:flex-wrap sm:items-center">
                   <GhostButton onClick={() => setRevealed((r) => ({ ...r, [i]: !r[i] }))}>
                     {revealed[i] ? "Hide answer" : "Reveal answer"}
                   </GhostButton>
                   {revealed[i] && <span className="math font-semibold">{q.expected.join(", ")}</span>}
-                  <span className="ml-auto flex gap-1">
+                  <span className="flex gap-1 sm:ml-auto">
                     <GhostButton
                       onClick={() => setMarks((m) => ({ ...m, [i]: true }))}
                       className={marks[i] === true ? "bg-mint-500/15 font-semibold" : ""}
@@ -103,7 +103,7 @@ export default function PracticeScreen() {
             ))}
           </ol>
           <Button
-            className="mt-4"
+            className="mt-4 w-full sm:w-auto"
             disabled={score.isPending}
             onClick={() =>
               score.mutate(

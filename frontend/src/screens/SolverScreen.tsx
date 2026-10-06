@@ -64,7 +64,7 @@ export default function SolverScreen() {
       </div>
 
       <form
-        className="flex gap-2"
+        className="flex flex-col gap-2 sm:flex-row"
         onSubmit={(e) => {
           e.preventDefault();
           setHintLevel(0);
@@ -77,7 +77,7 @@ export default function SolverScreen() {
           placeholder={active.placeholder}
           aria-label="Mathematical input"
         />
-        <Button type="submit" disabled={solve.isPending}>
+        <Button type="submit" disabled={solve.isPending} className="w-full shrink-0 sm:w-auto">
           {solve.isPending ? "Solving…" : "Solve"}
         </Button>
       </form>
