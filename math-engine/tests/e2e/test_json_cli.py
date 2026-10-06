@@ -9,6 +9,12 @@ import pytest
 CMD = [sys.executable, "-m", "workbench_math.entrypoints.json_cli"]
 
 
+@pytest.fixture(autouse=True)
+def _isolated_data_dir(tmp_path, monkeypatch):
+    """Never touch the real ~/.math-workbench from tests."""
+    monkeypatch.setenv("WORKBENCH_DATA_DIR", str(tmp_path / "data"))
+
+
 def run_requests(payloads):
     proc = subprocess.run(
         CMD, input="\n".join(json.dumps(p) for p in payloads) + "\n",
@@ -59,6 +65,28 @@ def test_graph_ops_round_trip():
     assert [p["x"] for p in analyzed["result"]["roots"]] == [1.0, 3.0]
     assert tabled["ok"] is True and tabled["result"]["ys"] == ["-1", "-2", "-1"]
     assert met["ok"] is True and met["result"]["points"][0]["x"] == 3.0
+
+
+def test_history_auto_save_and_list(tmp_path):
+    import os
+
+    env = dict(os.environ, WORKBENCH_DATA_DIR=str(tmp_path))
+    solve = {"op": "solve_linear", "input": "2x + 5 = 17"}
+    proc = subprocess.run(CMD, input=json.dumps(solve) + "\n",
+                          capture_output=True, text=True, timeout=120, env=env)
+    assert proc.returncode == 0, proc.stderr
+    assert json.loads(proc.stdout.strip())["ok"] is True
+    listed = subprocess.run(
+        CMD, input=json.dumps({"op": "history_list"}) + "\n",
+        capture_output=True, text=True, timeout=120, env=env)
+    entries = json.loads(listed.stdout.strip())["result"]["entries"]
+    assert len(entries) == 1
+    assert entries[0]["input"] == "2x + 5 = 17"
+    assert entries[0]["exact"] == ["6"]
+    cleared = subprocess.run(
+        CMD, input=json.dumps({"op": "history_clear"}) + "\n",
+        capture_output=True, text=True, timeout=120, env=env)
+    assert json.loads(cleared.stdout.strip())["result"]["cleared"] == 1
 
 
 def test_malformed_json_line_does_not_kill_stream():

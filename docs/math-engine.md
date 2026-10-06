@@ -35,6 +35,11 @@ asymptotes, gradient — all engine cross-checked), `table_values`
 (Fraction-exact `start/end/step` strings; `"undefined"` cells), and
 `solve_intersection` (`inputs: [f, g]` → verified points; `[]` when parallel).
 
+History (offline-first, SQLite): every successful solve/transform auto-saves to
+`$WORKBENCH_DATA_DIR/history.db` (default `~/.math-workbench/history.db`, schema
+v1, failures never break math). `history_list` (`limit`, newest-first) and
+`history_clear` manage it.
+
 ### Success response
 
 ```jsonc

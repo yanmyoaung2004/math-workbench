@@ -8,10 +8,13 @@ INTERNAL_ERROR with a student-safe message.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import traceback
 from dataclasses import asdict
+from pathlib import Path
 
+from ..adapters.sqlite_history import SqliteHistory
 from ..adapters.sympy_parser import SymPyParser
 from ..adapters.sympy_solver import SymPySolver
 from ..application.solve_inequality import solve_inequality
@@ -29,11 +32,29 @@ from ..graph.tables import table_values
 
 _OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
         "simplify", "expand", "factorise", "parse",
-        "sample_graph", "analyze_graph", "table_values", "solve_intersection"}
+        "sample_graph", "analyze_graph", "table_values", "solve_intersection",
+        "history_list", "history_clear"}
+
+# Ops whose verified results are recorded in local history (calculation log).
+_SAVED_OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
+              "simplify", "expand", "factorise"}
 
 
-def _solution_to_response(op: str, solution: Solution) -> dict:
+def data_dir() -> Path:
+    """Local data root: $WORKBENCH_DATA_DIR or ~/.math-workbench (offline)."""
+    override = os.environ.get("WORKBENCH_DATA_DIR", "").strip()
+    return Path(override) if override else Path.home() / ".math-workbench"
+
+
+def _solution_to_response(op: str, solution: Solution, raw: str) -> dict:
     payload = asdict(solution)
+    if op in _SAVED_OPS:
+        try:
+            store = SqliteHistory(data_dir() / "history.db")
+            store.save(op, raw, payload["interpretation"],
+                       list(payload["exact"]), payload["verification"])
+        except Exception:
+            traceback.print_exc(file=sys.stderr)  # history never breaks math
     return {"ok": True, "op": op, "interpretation": solution.interpretation, "result": payload}
 
 
@@ -49,7 +70,7 @@ def handle(request: dict) -> dict:
             f"Unknown op {op!r}. Choose one of: {', '.join(sorted(_OPS))}.",
         )
     raw = request.get("input", "")
-    if op not in ("solve_system", "solve_intersection") and (
+    if op not in ("solve_system", "solve_intersection", "history_list", "history_clear") and (
         not isinstance(raw, str) or not raw.strip()
     ):
         return _error_response(op, ValidationError.code, "Please enter a mathematical expression or equation.")
@@ -69,9 +90,9 @@ def handle(request: dict) -> dict:
             equations = request.get("equations", [])
             if not isinstance(equations, list):
                 return _error_response(op, ValidationError.code, "Send equations as a list of two strings.")
-            return _solution_to_response(op, solve_system(equations, parser, solver, domain))
+            return _solution_to_response(op, solve_system(equations, parser, solver, domain), "; ".join(equations))
         if op == "solve_inequality":
-            return _solution_to_response(op, solve_inequality(raw, parser, solver, domain))
+            return _solution_to_response(op, solve_inequality(raw, parser, solver, domain), raw)
         if op == "sample_graph":
             try:
                 req = SampleRequest(
@@ -101,15 +122,29 @@ def handle(request: dict) -> dict:
             return {"ok": True, "op": op, "interpretation": " ; ".join(inputs),
                     "result": {"points": [asdict(p) for p in points]}}
         if op == "solve_linear":
-            return _solution_to_response(op, solve_linear(raw, parser, solver, domain))
+            return _solution_to_response(op, solve_linear(raw, parser, solver, domain), raw)
         if op == "solve_quadratic":
             method = request.get("method", "auto")
             if not isinstance(method, str):
                 return _error_response(op, ValidationError.code, "Method must be a string.")
             return _solution_to_response(
-                op, solve_quadratic(raw, parser, solver, domain, method)
+                op, solve_quadratic(raw, parser, solver, domain, method), raw
             )
-        return _solution_to_response(op, transform_expression(raw, op, parser, solver))
+        if op in ("simplify", "expand", "factorise"):
+            return _solution_to_response(op, transform_expression(raw, op, parser, solver), raw)
+        if op == "history_list":
+            try:
+                limit = int(request.get("limit", 50))
+            except (TypeError, ValueError):
+                return _error_response(op, ValidationError.code, "limit must be an integer.")
+            store = SqliteHistory(data_dir() / "history.db")
+            return {"ok": True, "op": op, "interpretation": "",
+                    "result": {"entries": [asdict(e) for e in store.list_recent(limit)]}}
+        if op == "history_clear":
+            store = SqliteHistory(data_dir() / "history.db")
+            return {"ok": True, "op": op, "interpretation": "",
+                    "result": {"cleared": store.clear()}}
+        return _error_response(op, ValidationError.code, f"Unhandled op {op!r}.")
     except MathEngineError as exc:
         return _error_response(op, exc.code, str(exc))
     except Exception:  # noqa: BLE001 — boundary: never leak internals to the student UI
