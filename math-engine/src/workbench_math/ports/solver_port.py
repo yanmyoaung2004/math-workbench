@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from ..domain.models import Domain, Expression
 from .parser_port import ParserPort
 
-__all__ = ["LinearFacts", "QuadraticFacts", "SystemFacts", "TransformFacts", "ParserPort", "SolverPort"]
+__all__ = ["LinearFacts", "QuadraticFacts", "SystemFacts", "InequalityFacts", "TransformFacts", "ParserPort", "SolverPort"]
 
 
 @dataclass(frozen=True)
@@ -80,6 +80,24 @@ class SystemFacts:
     interpretation: str
 
 
+@dataclass(frozen=True)
+class InequalityFacts:
+    """Algebraic facts about a single-variable linear inequality.
+
+    `relation` is the canonical input ("2*x + 3 > 9"); `phrase` is the GCSE
+    solution phrase ("x > 3"); `set_tag`: "interval" | "empty" | "all" |
+    "condition". `test_point` is an interior value proving the set (FR-VER-1).
+    """
+
+    symbol: str
+    relation: str
+    phrase: str
+    set_tag: str
+    test_point: str
+    chain: tuple[tuple[str, str, str, str], ...]  # (op, operand, before, after)
+    interpretation: str
+
+
 class SolverPort(abc.ABC):
     @abc.abstractmethod
     def solve_linear(
@@ -112,6 +130,13 @@ class SolverPort(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
+    def check_inequality(
+        self, lhs: str, rhs: str, rel: str, symbol: str, candidate: str
+    ) -> bool:
+        """True iff the candidate satisfies `lhs rel rhs` (exact semantics)."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def solve_quadratic(
         self, expr: Expression, domain: Domain = Domain.REALS, method: str = "auto"
     ) -> QuadraticFacts:
@@ -123,4 +148,11 @@ class SolverPort(abc.ABC):
         self, exprs: tuple[Expression, ...], domain: Domain = Domain.REALS
     ) -> SystemFacts:
         """Two linear equations in two variables (V1)."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def solve_inequality(
+        self, expr: Expression, domain: Domain = Domain.REALS
+    ) -> InequalityFacts:
+        """Single-variable linear inequality (V1)."""
         raise NotImplementedError

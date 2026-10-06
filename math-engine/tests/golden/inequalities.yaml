@@ -1,0 +1,21 @@
+# Golden corpus — linear inequalities (Phase 1b). Append-only.
+- input: "2x + 3 > 9"
+  op: solve_inequality
+  exact: ["x > 3"]
+  ops: [subtract_both_sides, divide_both_sides]
+- input: "-2x + 3 < 9"
+  op: solve_inequality
+  exact: ["x > -3"]
+  ops: [subtract_both_sides, flip_inequality_sign, divide_both_sides]
+- input: "5 - x <= 2"
+  op: solve_inequality
+  exact: ["x >= 3"]
+- input: "x + 1 > x + 2"
+  op: solve_inequality
+  error: NO_SOLUTION
+- input: "x + 2 > x + 1"
+  op: solve_inequality
+  error: INFINITE_SOLUTIONS
+- input: "x^2 > 4"
+  op: solve_inequality
+  error: UNSOLVABLE

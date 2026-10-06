@@ -14,6 +14,7 @@ from dataclasses import asdict
 
 from ..adapters.sympy_parser import SymPyParser
 from ..adapters.sympy_solver import SymPySolver
+from ..application.solve_inequality import solve_inequality
 from ..application.solve_linear import solve_linear
 from ..application.solve_quadratic import solve_quadratic
 from ..application.solve_system import solve_system
@@ -21,7 +22,8 @@ from ..application.transform import transform_expression
 from ..domain.exceptions import MathEngineError, ValidationError
 from ..domain.models import Domain, Solution
 
-_OPS = {"solve_linear", "solve_quadratic", "solve_system", "simplify", "expand", "factorise", "parse"}
+_OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
+        "simplify", "expand", "factorise", "parse"}
 
 
 def _solution_to_response(op: str, solution: Solution) -> dict:
@@ -60,6 +62,8 @@ def handle(request: dict) -> dict:
             if not isinstance(equations, list):
                 return _error_response(op, ValidationError.code, "Send equations as a list of two strings.")
             return _solution_to_response(op, solve_system(equations, parser, solver, domain))
+        if op == "solve_inequality":
+            return _solution_to_response(op, solve_inequality(raw, parser, solver, domain))
         if op == "solve_linear":
             return _solution_to_response(op, solve_linear(raw, parser, solver, domain))
         if op == "solve_quadratic":

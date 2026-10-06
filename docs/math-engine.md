@@ -11,7 +11,7 @@ One request line → one response line. UTF-8, `\n`-terminated.
 
 ```jsonc
 {
-  "op": "solve_linear" | "solve_quadratic" | "solve_system" | "simplify" | "expand" | "factorise" | "parse",
+  "op": "solve_linear" | "solve_quadratic" | "solve_system" | "solve_inequality" | "simplify" | "expand" | "factorise" | "parse",
   "input": "2x + 5 = 17",   // raw user string, required (except solve_system)
   "equations": ["2x + y = 7", "x - y = 2"],  // solve_system only: exactly 2
   "domain": "reals",         // optional, default "reals" (GCSE); "complex" opts in
@@ -24,7 +24,10 @@ Multi-solution responses join the final step as `"x = r1; x = r2"`; `exact`
 lists each root separately. `NO_SOLUTION` for `x^2+1=0` (reals) carries a
 discriminant hint in the message. System responses add `bindings`:
 `[{"variable": "x", "exact": "3", "approximate": "3.0"}, ...]` (single-variable
-solvers fill one binding each).
+solvers fill one binding each). Inequality responses carry the solution phrase in
+`exact` (e.g. `["x > 3"]`), an empty `approximate`, and a `flip_inequality_sign`
+step whenever multiplying/dividing by a negative (the step explanation always
+states the reversal rule).
 
 ### Success response
 
@@ -144,6 +147,7 @@ called by application — not hidden inside the SymPy adapter (so the check is i
 | `scale_equation` | `multiplication_property_of_equality` | `2x+y=7 ×3` |
 | `eliminate_variable` | `elimination_method` | `add/subtract to kill y` |
 | `substitute_back` | `substitution_method` | `x=3 into x-y=2` |
+| `flip_inequality_sign` | `inequality_sign_reversal` | `-2x>6 → 2x<-6` |
 
 Inequality sign-flip (`…reverse the inequality…`) lands with A3.
 

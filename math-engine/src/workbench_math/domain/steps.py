@@ -97,6 +97,10 @@ EXPLANATIONS: dict[str, tuple[str, str]] = {
         "substitution_method",
         "Substitute {operand} into the other equation.",
     ),
+    "flip_inequality_sign": (
+        "inequality_sign_reversal",
+        "Multiply by {operand} (negative), so reverse the inequality sign.",
+    ),
 }
 
 INEQUALITY_FLIP_NOTE = (

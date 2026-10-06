@@ -8,12 +8,16 @@ independent substitution check, step-chain strings built from real SymPy objects
 
 from __future__ import annotations
 
-from sympy import Eq, N, Poly, S, Symbol, expand, factor, factor_list, simplify, sqrt, sstr
+from sympy import (
+    Eq, Ge, Gt, Interval, Le, Lt, N, Poly, S, Symbol, Union,
+    expand, factor, factor_list, simplify, sqrt, sstr,
+)
 from sympy.solvers.solveset import linsolve, solveset
 
 from ..domain.exceptions import UnsolvableError, ValidationError
 from ..domain.models import Domain, Expression
 from ..ports.solver_port import (
+    InequalityFacts,
     LinearFacts,
     QuadraticFacts,
     SolverPort,
@@ -496,6 +500,190 @@ class SymPySolver(SolverPort):
         final = f"{eq_str(u, uval)}; {eq_str(v, to_sympy(values[v.name]))}"
         chain.append(("divide_both_sides", canonical(kv), after2, final))
         return tuple(chain)
+
+    # -- linear inequalities ------------------------------------------------
+    _REL_CLASS = {"<": Lt, "<=": Le, ">": Gt, ">=": Ge}
+    _FLIP = {"<": ">", ">": "<", "<=": ">=", ">=": "<="}
+
+    def solve_inequality(
+        self, expr: Expression, domain: Domain = Domain.REALS
+    ):
+        if expr.kind != "inequality":
+            raise ValidationError(
+                "To solve an inequality, enter one comparison — e.g. 2x + 3 > 9."
+            )
+        if domain is not Domain.REALS:
+            raise ValidationError("Inequalities are solved over the reals in V1.")
+        rel = next((op for op in (">=", "<=", ">", "<") if f" {op} " in f" {expr.canonical} "), None)
+        if rel is None:
+            raise ValidationError("I couldn't find a comparison in that input.")
+        lhs_raw, rhs_raw = expr.canonical.split(rel, 1)
+        lhs, rhs = to_sympy(lhs_raw), to_sympy(rhs_raw)
+        symbols = lhs.free_symbols | rhs.free_symbols
+        if len(symbols) > 1:
+            raise UnsolvableError("I solve inequalities in one variable in V1.")
+        if not symbols:
+            holds = self.check_inequality(lhs_raw, rhs_raw, rel, "x", "0")
+            tag = "all" if holds else "empty"
+            return InequalityFacts(
+                symbol="x", relation=expr.canonical, phrase="all real numbers",
+                set_tag=tag, test_point="0", chain=(), interpretation=expr.canonical,
+            )
+        x = next(iter(symbols))
+        diff = expand(lhs - rhs)
+        if diff.is_zero:
+            holds = self.check_inequality(lhs_raw, rhs_raw, rel, x.name, "0")
+            tag = "all" if holds else "empty"
+            return InequalityFacts(
+                symbol=x.name, relation=expr.canonical,
+                phrase="all real numbers", set_tag=tag, test_point="0", chain=(),
+                interpretation=expr.canonical,
+            )
+        try:
+            degree = Poly(diff, x).degree()
+        except Exception as exc:
+            raise UnsolvableError("That isn't linear — V1 shows steps for linear inequalities.") from exc
+        if degree == 0:
+            holds = self.check_inequality(lhs_raw, rhs_raw, rel, x.name, "0")
+            tag = "all" if holds else "empty"
+            return InequalityFacts(
+                symbol=x.name, relation=expr.canonical,
+                phrase="all real numbers", set_tag=tag, test_point="0", chain=(),
+                interpretation=expr.canonical,
+            )
+        if degree != 1:
+            raise UnsolvableError(
+                "V1 shows steps for linear inequalities only — quadratics arrive later."
+            )
+        try:
+            result = solveset(self._REL_CLASS[rel](lhs, rhs), x, domain=S.Reals)
+        except (NotImplementedError, ValueError) as exc:
+            raise UnsolvableError("I couldn't solve that inequality automatically.") from exc
+        if result is S.EmptySet:
+            return InequalityFacts(
+                symbol=x.name, relation=expr.canonical, phrase="",
+                set_tag="empty", test_point="", chain=(),
+                interpretation=expr.canonical,
+            )
+        if result is S.Reals:
+            return InequalityFacts(
+                symbol=x.name, relation=expr.canonical, phrase="all real numbers",
+                set_tag="all", test_point="0", chain=(),
+                interpretation=expr.canonical,
+            )
+        phrase, test_point = self._describe_set(result, x.name)
+        chain = self._inequality_chain(expr.canonical, lhs, rhs, x, rel)
+        return InequalityFacts(
+            symbol=x.name, relation=expr.canonical, phrase=phrase,
+            set_tag="interval", test_point=test_point, chain=chain,
+            interpretation=expr.canonical,
+        )
+
+    @staticmethod
+    def _describe_set(solution_set, name: str) -> tuple[str, str]:
+        """GCSE phrase + interior test point for an Interval/Union result."""
+        parts = solution_set.args if isinstance(solution_set, Union) else (solution_set,)
+        phrases, points = [], []
+        for part in parts:
+            if not isinstance(part, Interval):
+                raise UnsolvableError(
+                    "That solution set is too complex to display in V1."
+                )
+            a, b = part.start, part.end
+            la = "<" if part.left_open else "<="
+            ra = "<" if part.right_open else "<="
+            sa, sb = canonical(a), canonical(b)
+            if a is S.NegativeInfinity and b is S.Infinity:
+                phrases.append("all real numbers")
+                points.append("0")
+            elif a is S.NegativeInfinity:
+                phrases.append(f"{name} {ra} {sb}")
+                points.append(canonical(b - 1))
+            elif b is S.Infinity:
+                op = ">" if la == "<" else ">="
+                phrases.append(f"{name} {op} {sa}")
+                points.append(canonical(a + 1))
+            else:
+                phrases.append(f"{sa} {la} {name} {ra} {sb}")
+                points.append(canonical((a + b) / 2))
+        return " or ".join(phrases), points[0]
+
+    def _inequality_chain(self, interpretation, lhs, rhs, x, rel):
+        """Linear inequality chain with sign-flip on negative multiply/divide."""
+        flip = self._FLIP[rel]
+        ineq = lambda l, r, o: f"{canonical(l)} {o} {canonical(r)}"  # noqa: E731
+        chain: list[tuple[str, str, str, str]] = []
+        display_lhs, display_rhs = (
+            interpretation.split(rel, 1)[0].strip(),
+            interpretation.split(rel, 1)[1].strip(),
+        )
+        expanded_lhs, expanded_rhs = canonical(expand(lhs)), canonical(expand(rhs))
+        cur_lhs, cur_rhs = expand(lhs), expand(rhs)
+        if display_lhs != expanded_lhs or display_rhs != expanded_rhs:
+            after = f"{expanded_lhs} {rel} {expanded_rhs}"
+            display = f"{display_lhs} {rel} {display_rhs}"
+            bracketed = [
+                side
+                for side in (display_lhs, display_rhs)
+                if has_bracket_product(to_sympy(side, evaluate=False))
+            ]
+            if bracketed:
+                chain.append(("distribute", " and ".join(bracketed), display, after))
+            else:
+                chain.append(("collect_like_terms", display_lhs, display, after))
+
+        total = expand(cur_lhs - cur_rhs)
+        poly = Poly(total, x)
+        coeffs = poly.all_coeffs()
+        a = coeffs[0]
+        const = coeffs[1] if len(coeffs) > 1 else S.Zero
+        before = chain[-1][3] if chain else interpretation
+        if x in cur_rhs.free_symbols:
+            new_rhs = -const
+            after = ineq(a * x, new_rhs, rel)
+            chain.append(("collect_like_terms", "like terms", before, after))
+            cur_lhs, cur_rhs = a * x, new_rhs
+            before = after
+
+        b = expand(cur_lhs - a * x)
+        r = cur_rhs
+        cur_rel = rel
+        if b != 0:
+            if bool(b > 0):
+                op, operand = "subtract_both_sides", canonical(b)
+            else:
+                op, operand = "add_both_sides", canonical(-b)
+            after = ineq(a * x, r - b, cur_rel)
+            chain.append((op, operand, before, after))
+            before, r = after, r - b
+
+        if a != 1:
+            if bool(a < 0):
+                if a.is_Rational and a.p == -1 and abs(int(a.q)) > 1:
+                    m = -int(a.q)
+                else:
+                    m = S.NegativeOne
+                cur_rel = flip
+                after = ineq(expand(a * x * m), expand(r * m), cur_rel)
+                chain.append(("flip_inequality_sign", canonical(m), before, after))
+                before, a, r = after, expand(a * m), expand(r * m)
+            if a != 1:
+                after = ineq(x, r / a, cur_rel)
+                chain.append(("divide_both_sides", canonical(a), before, after))
+        return tuple(chain)
+
+    def check_inequality(self, lhs: str, rhs: str, rel: str, symbol: str, candidate: str) -> bool:
+        try:
+            value = simplify(
+                (to_sympy(lhs) - to_sympy(rhs)).subs(Symbol(symbol), to_sympy(candidate))
+            )
+            zero = S.Zero
+            return bool(
+                {"<": value < zero, "<=": value <= zero,
+                 ">": value > zero, ">=": value >= zero}[rel]
+            )
+        except Exception:
+            return False
 
     # -- transforms ---------------------------------------------------------
     def transform(self, expr: Expression, kind: str) -> TransformFacts:

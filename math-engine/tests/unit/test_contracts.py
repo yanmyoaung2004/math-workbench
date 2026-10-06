@@ -57,6 +57,12 @@ class FakeSolver(SolverPort):
     def solve_system(self, exprs, domain=Domain.REALS):
         raise NotImplementedError("contract fakes cover linear only")
 
+    def solve_inequality(self, expr, domain=Domain.REALS):
+        raise NotImplementedError("contract fakes cover linear only")
+
+    def check_inequality(self, lhs, rhs, rel, symbol, candidate):
+        return self._equality
+
     def check_system_equality(self, equations, bindings):
         return self._equality
 

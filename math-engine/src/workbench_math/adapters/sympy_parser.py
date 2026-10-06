@@ -16,6 +16,8 @@ from ..domain.models import Expression
 from ..ports.parser_port import ParserPort
 from ._sympy_common import canonical, has_bracket_product, to_sympy
 
+_REL_OPS = (">=", "<=", ">", "<")
+
 
 def _display(text: str) -> str:
     """Student-facing form: preserve written structure only when it carries
@@ -31,7 +33,10 @@ class SymPyParser(ParserPort):
     def parse(self, raw: str) -> Expression:
         if not raw or not raw.strip():
             raise ParseError("Please enter a mathematical expression or equation.")
-        text = raw.strip()
+        text = raw.strip().replace("==", "=")
+        for op in (">=", "<="):  # must precede "=" (they contain it)
+            if op in text:
+                return self._parse_inequality(raw, text, op)
         if "=" in text:
             parts = text.split("=")
             if len(parts) != 2 or not parts[0].strip() or not parts[1].strip():
@@ -42,4 +47,23 @@ class SymPyParser(ParserPort):
             lhs = _display(parts[0])
             rhs = _display(parts[1])
             return Expression(raw=raw, canonical=f"{lhs} = {rhs}", kind="equation")
+        for op in (">", "<"):
+            if op in text:
+                return self._parse_inequality(raw, text, op)
         return Expression(raw=raw, canonical=_display(text), kind="expression")
+
+    @staticmethod
+    def _parse_inequality(raw: str, text: str, op: str) -> Expression:
+        sides = text.split(op, 1)
+        if len(sides) != 2 or not sides[0].strip() or not sides[1].strip():
+            raise ParseError(
+                f"I couldn't parse {raw!r}. An inequality needs two "
+                "sides, e.g. 2x + 3 > 9."
+            )
+        if any(o in sides[1] for o in _REL_OPS):
+            raise ParseError(
+                f"I couldn't parse {raw!r}. Chained inequalities like "
+                "1 < x < 5 are not supported yet — send one comparison."
+            )
+        lhs, rhs = _display(sides[0]), _display(sides[1])
+        return Expression(raw=raw, canonical=f"{lhs} {op} {rhs}", kind="inequality")
