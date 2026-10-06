@@ -48,19 +48,28 @@ def _evaluate(fn, xs: np.ndarray) -> np.ndarray:
     return out
 
 
-def _split(ys: np.ndarray) -> list[int]:
-    """Indices where a new segment must start (non-finite runs + jumps)."""
+def _split(ys: np.ndarray, xs: np.ndarray, poles: tuple[float, ...]) -> list[int]:
+    """Segment-start indices.
+
+    Splits at (a) non-finite runs, (b) known poles — no segment may span one,
+    regardless of sampled jump size (a wide viewport can make real pole jumps
+    look small next to the span), and (c) residual vertical jumps.
+    """
     finite = np.isfinite(ys)
     breaks = [0]
     span = float(np.nanmax(ys) - np.nanmin(ys)) if np.any(finite) else 0.0
-    jump = max(span * 0.5, 1e-9)  # conservative: only true pole-crossings split
+    jump = max(span * 0.5, 1e-9)
+    for pole in poles:
+        at = int(np.searchsorted(xs, pole, side="left"))
+        if 0 < at < len(xs) and at not in breaks:
+            breaks.append(at)
     for i in range(1, len(ys)):
         if not finite[i] or not finite[i - 1]:
             breaks.append(i)
         elif abs(float(ys[i]) - float(ys[i - 1])) > jump:
             breaks.append(i)
     breaks.append(len(ys))
-    return breaks
+    return sorted(set(breaks))
 
 
 def sample(request: SampleRequest, parser: ParserPort) -> SampleResult:
@@ -84,7 +93,8 @@ def sample(request: SampleRequest, parser: ParserPort) -> SampleResult:
         raise ValidationError("I couldn't evaluate that function for graphing.") from exc
     ys = _evaluate(fn, xs)
 
-    breaks = _split(ys)
+    excluded = finite_poles(parsed, x, float(request.x_min), float(request.x_max))
+    breaks = _split(ys, xs, excluded)
     segments = []
     for start, end in zip(breaks, breaks[1:]):
         mask = np.isfinite(ys[start:end])
@@ -96,5 +106,4 @@ def sample(request: SampleRequest, parser: ParserPort) -> SampleResult:
             ys=tuple(float(v) for v in ys[idx]),
         ))
 
-    excluded = finite_poles(parsed, x, float(request.x_min), float(request.x_max))
     return SampleResult(interpretation=text, segments=tuple(segments), excluded=excluded)
