@@ -11,7 +11,7 @@ One request line → one response line. UTF-8, `\n`-terminated.
 
 ```jsonc
 {
-  "op": "solve_linear" | "solve_quadratic" | "solve_system" | "solve_inequality" | "simplify" | "expand" | "factorise" | "parse",
+  "op": "solve_linear" | "solve_quadratic" | "solve_system" | "solve_inequality" | "simplify" | "expand" | "factorise" | "parse" | "sample_graph" | "analyze_graph" | "table_values" | "solve_intersection",
   "input": "2x + 5 = 17",   // raw user string, required (except solve_system)
   "equations": ["2x + y = 7", "x - y = 2"],  // solve_system only: exactly 2
   "domain": "reals",         // optional, default "reals" (GCSE); "complex" opts in
@@ -28,6 +28,12 @@ solvers fill one binding each). Inequality responses carry the solution phrase i
 `exact` (e.g. `["x > 3"]`), an empty `approximate`, and a `flip_inequality_sign`
 step whenever multiplying/dividing by a negative (the step explanation always
 states the reversal rule).
+
+Graph ops: `sample_graph` (`x_min/x_max/n`, discontinuity-split `segments` +
+`excluded` poles), `analyze_graph` (roots, y-intercept, turning points, axis,
+asymptotes, gradient — all engine cross-checked), `table_values`
+(Fraction-exact `start/end/step` strings; `"undefined"` cells), and
+`solve_intersection` (`inputs: [f, g]` → verified points; `[]` when parallel).
 
 ### Success response
 

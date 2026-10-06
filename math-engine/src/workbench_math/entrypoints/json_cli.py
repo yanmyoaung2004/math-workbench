@@ -21,9 +21,15 @@ from ..application.solve_system import solve_system
 from ..application.transform import transform_expression
 from ..domain.exceptions import MathEngineError, ValidationError
 from ..domain.models import Domain, Solution
+from ..graph.analysis import analyze
+from ..graph.intersections import intersect
+from ..graph.models import SampleRequest
+from ..graph.sampler import sample
+from ..graph.tables import table_values
 
 _OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
-        "simplify", "expand", "factorise", "parse"}
+        "simplify", "expand", "factorise", "parse",
+        "sample_graph", "analyze_graph", "table_values", "solve_intersection"}
 
 
 def _solution_to_response(op: str, solution: Solution) -> dict:
@@ -43,7 +49,9 @@ def handle(request: dict) -> dict:
             f"Unknown op {op!r}. Choose one of: {', '.join(sorted(_OPS))}.",
         )
     raw = request.get("input", "")
-    if op != "solve_system" and (not isinstance(raw, str) or not raw.strip()):
+    if op not in ("solve_system", "solve_intersection") and (
+        not isinstance(raw, str) or not raw.strip()
+    ):
         return _error_response(op, ValidationError.code, "Please enter a mathematical expression or equation.")
     domain_raw = request.get("domain", "reals")
     try:
@@ -64,6 +72,34 @@ def handle(request: dict) -> dict:
             return _solution_to_response(op, solve_system(equations, parser, solver, domain))
         if op == "solve_inequality":
             return _solution_to_response(op, solve_inequality(raw, parser, solver, domain))
+        if op == "sample_graph":
+            try:
+                req = SampleRequest(
+                    expression=raw,
+                    x_min=float(request.get("x_min", -10.0)),
+                    x_max=float(request.get("x_max", 10.0)),
+                    n_points=int(request.get("n", 400)),
+                )
+            except (TypeError, ValueError):
+                return _error_response(op, ValidationError.code, "x_min/x_max must be numbers and n an integer.")
+            return {"ok": True, "op": op, "interpretation": raw,
+                    "result": asdict(sample(req, parser))}
+        if op == "analyze_graph":
+            return {"ok": True, "op": op, "interpretation": raw,
+                    "result": asdict(analyze(raw, parser))}
+        if op == "table_values":
+            start, end, step = (request.get(k, "") for k in ("start", "end", "step"))
+            if not all(isinstance(v, str) for v in (start, end, step)):
+                return _error_response(op, ValidationError.code, "Send start/end/step as strings.")
+            return {"ok": True, "op": op, "interpretation": raw,
+                    "result": asdict(table_values(raw, start, end, step, parser))}
+        if op == "solve_intersection":
+            inputs = request.get("inputs", [])
+            if not isinstance(inputs, list) or len(inputs) != 2:
+                return _error_response(op, ValidationError.code, "Send inputs as a list of two functions.")
+            points = intersect(inputs[0], inputs[1], parser)
+            return {"ok": True, "op": op, "interpretation": " ; ".join(inputs),
+                    "result": {"points": [asdict(p) for p in points]}}
         if op == "solve_linear":
             return _solution_to_response(op, solve_linear(raw, parser, solver, domain))
         if op == "solve_quadratic":

@@ -45,6 +45,22 @@ def test_system_round_trip():
     assert bad["ok"] is False and bad["error"]["code"] == "VALIDATION_ERROR"
 
 
+def test_graph_ops_round_trip():
+    responses = run_requests([
+        {"op": "sample_graph", "input": "y = 1/x", "x_min": -5, "x_max": 5, "n": 200},
+        {"op": "analyze_graph", "input": "y = x^2 - 4x + 3"},
+        {"op": "table_values", "input": "y = x^2 - 2", "start": "-1", "end": "1", "step": "1"},
+        {"op": "solve_intersection", "inputs": ["y = 2x + 4", "y = 10"]},
+    ])
+    sampled, analyzed, tabled, met = responses
+    assert sampled["ok"] is True and len(sampled["result"]["segments"]) == 2
+    assert sampled["result"]["excluded"] == [0.0]
+    assert analyzed["ok"] is True
+    assert [p["x"] for p in analyzed["result"]["roots"]] == [1.0, 3.0]
+    assert tabled["ok"] is True and tabled["result"]["ys"] == ["-1", "-2", "-1"]
+    assert met["ok"] is True and met["result"]["points"][0]["x"] == 3.0
+
+
 def test_malformed_json_line_does_not_kill_stream():
     proc = subprocess.run(
         CMD, input='{"op": "solve_linear", "input": "x = 6"}\nnot json\n',
