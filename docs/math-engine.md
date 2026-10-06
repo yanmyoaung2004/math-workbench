@@ -1,7 +1,7 @@
-# Math Engine API Contracts (Phase 0 → 1a binding)
+# Math Engine API Contracts (Phase 0 → 1b binding)
 
 Implementations MUST satisfy these shapes. Tests enforce them
-(`tests/unit/test_contracts.py`, golden corpus). Version: `v1a`.
+(`tests/unit/test_contracts.py`, golden corpus). Version: `v1b`.
 
 ## 1. JSON sidecar protocol (stdio JSON-lines)
 
@@ -11,12 +11,17 @@ One request line → one response line. UTF-8, `\n`-terminated.
 
 ```jsonc
 {
-  "op": "solve_linear" | "simplify" | "expand" | "factorise" | "parse",
+  "op": "solve_linear" | "solve_quadratic" | "simplify" | "expand" | "factorise" | "parse",
   "input": "2x + 5 = 17",   // raw user string, required
   "domain": "reals",         // optional, default "reals" (GCSE); "complex" opts in
+  "method": "auto",          // solve_quadratic only: auto | factorise | formula | complete_square
   "curriculum": "gcse"       // optional, default "gcse"; gates advanced output
 }
 ```
+
+Multi-solution responses join the final step as `"x = r1; x = r2"`; `exact`
+lists each root separately. `NO_SOLUTION` for `x^2+1=0` (reals) carries a
+discriminant hint in the message.
 
 ### Success response
 
@@ -115,7 +120,7 @@ Verification lives in `domain/verify.py` as a pure function
 (`check_solution(equation, candidate) -> bool` via `simplify(lhs-rhs)==0`),
 called by application — not hidden inside the SymPy adapter (so the check is independent).
 
-## 5. Step vocabulary (V1a, linear only)
+## 5. Step vocabulary (V1b: linear + quadratic)
 
 | operation | rule | example |
 |-----------|------|---------|
@@ -125,8 +130,16 @@ called by application — not hidden inside the SymPy adapter (so the check is i
 | `multiply_both_sides` | `multiplication_property_of_equality` | `x/3=4 → x=12` |
 | `distribute` | `distributive_property` | `2(x+3)=14 → 2x+6=14` |
 | `collect_like_terms` | `combining_like_terms` | `2x+3x=10 → 5x=10` |
+| `rewrite` | `equivalent_form` | `x²=4x-3 → x²-4x+3=0` |
+| `factorise_equation` | `factorisation` | `x²-5x+6=0 → (x-2)(x-3)=0` |
+| `apply_zero_product` | `zero_product_property` | `(x-3)=0 → x=3` |
+| `identify_coefficients` | `standard_quadratic_form` | `a=1, b=-5, c=6` |
+| `compute_discriminant` | `discriminant` | `25-24=1` |
+| `apply_quadratic_formula` | `quadratic_formula` | `x=(-(-5)±√1)/2` |
+| `complete_the_square` | `completing_the_square` | `x²+6x+5=0 → (x+3)²=4` |
+| `take_square_root_pm` | `square_root_property` | `(x+3)²=4 → x+3=±2` |
 
-Inequality sign-flip (`…reverse the inequality…`) reserved for Phase 1b.
+Inequality sign-flip (`…reverse the inequality…`) lands with A3.
 
 ## 6. Compatibility promise
 

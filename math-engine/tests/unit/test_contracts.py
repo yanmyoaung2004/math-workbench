@@ -51,6 +51,9 @@ class FakeSolver(SolverPort):
     def check_identity(self, before, after):
         return self._identity
 
+    def solve_quadratic(self, expr, domain=Domain.REALS, method="auto"):
+        raise NotImplementedError("contract fakes cover linear only")
+
 
 def test_solve_linear_contract_shape():
     sol = solve_linear("2x + 5 = 17", FakeParser(), FakeSolver())

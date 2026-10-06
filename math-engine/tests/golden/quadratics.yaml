@@ -1,0 +1,23 @@
+# Golden corpus — quadratics (Phase 1b). Append-only.
+- input: "x^2 - 5x + 6 = 0"
+  op: solve_quadratic
+  exact: ["2", "3"]
+  ops: [factorise_equation, apply_zero_product, apply_zero_product]
+- input: "x^2 - 2x + 1 = 0"
+  op: solve_quadratic
+  exact: ["1"]
+  ops: [factorise_equation, apply_zero_product]
+- input: "x^2 - 2 = 0"
+  op: solve_quadratic
+  exact: ["-sqrt(2)", "sqrt(2)"]
+  approx: 1.4142135623730951
+  ops: [identify_coefficients, compute_discriminant, apply_quadratic_formula]
+- input: "x^2 + 1 = 0"
+  op: solve_quadratic
+  error: NO_SOLUTION
+- input: "x^3 - 1 = 0"
+  op: solve_quadratic
+  error: UNSOLVABLE
+- input: "2x + 5 = 17"
+  op: solve_quadratic
+  error: VALIDATION_ERROR

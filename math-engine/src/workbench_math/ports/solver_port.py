@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from ..domain.models import Domain, Expression
 from .parser_port import ParserPort
 
-__all__ = ["LinearFacts", "TransformFacts", "ParserPort", "SolverPort"]
+__all__ = ["LinearFacts", "QuadraticFacts", "TransformFacts", "ParserPort", "SolverPort"]
 
 
 @dataclass(frozen=True)
@@ -42,6 +42,28 @@ class TransformFacts:
     after: str
 
 
+@dataclass(frozen=True)
+class QuadraticFacts:
+    """Algebraic facts about a quadratic equation.
+
+    `method` is one of "factorise" | "formula" | "complete_square".
+    `discriminant` is the canonical string of b^2 - 4ac. Multi-root solutions
+    share one chain whose final `after` is the joined set "x = r1; x = r2".
+    """
+
+    symbol: str
+    a: str
+    b: str
+    c: str
+    discriminant: str
+    solutions: tuple[str, ...]
+    approximate: tuple[str, ...]
+    set_tag: str
+    method: str
+    chain: tuple[tuple[str, str, str, str], ...]  # (op, operand, before, after)
+    interpretation: str
+
+
 class SolverPort(abc.ABC):
     @abc.abstractmethod
     def solve_linear(
@@ -64,4 +86,11 @@ class SolverPort(abc.ABC):
     @abc.abstractmethod
     def check_identity(self, before: str, after: str) -> bool:
         """Identity check for transforms: simplify(before - after) == 0."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def solve_quadratic(
+        self, expr: Expression, domain: Domain = Domain.REALS, method: str = "auto"
+    ) -> QuadraticFacts:
+        """method: auto | factorise | formula | complete_square."""
         raise NotImplementedError

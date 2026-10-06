@@ -8,7 +8,10 @@ from workbench_math.domain.steps import check_chain, make_step
 
 def test_all_linear_operations_have_gcse_wording():
     for op in ("subtract_both_sides", "add_both_sides", "divide_both_sides",
-               "multiply_both_sides", "distribute", "collect_like_terms"):
+               "multiply_both_sides", "distribute", "collect_like_terms",
+               "factorise_equation", "apply_zero_product", "identify_coefficients",
+               "compute_discriminant", "apply_quadratic_formula",
+               "complete_the_square", "take_square_root_pm"):
         step = make_step(op, "2", "2*x + 5 = 17", "2*x = 12", symbol="x")
         assert step.rule and step.explanation
         assert "2" in step.explanation  # operand referenced, GCSE tone

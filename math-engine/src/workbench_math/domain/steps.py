@@ -57,6 +57,34 @@ EXPLANATIONS: dict[str, tuple[str, str]] = {
         "factorisation",
         "Factorise into irreducible factors.",
     ),
+    "factorise_equation": (
+        "factorisation",
+        "Factorise the left-hand side: {operand}.",
+    ),
+    "apply_zero_product": (
+        "zero_product_property",
+        "Set the factor {operand} to zero and solve.",
+    ),
+    "identify_coefficients": (
+        "standard_quadratic_form",
+        "Identify a, b and c in {operand}.",
+    ),
+    "compute_discriminant": (
+        "discriminant",
+        "Compute the discriminant: {operand}.",
+    ),
+    "apply_quadratic_formula": (
+        "quadratic_formula",
+        "Apply the quadratic formula: {operand}.",
+    ),
+    "complete_the_square": (
+        "completing_the_square",
+        "Complete the square to get {operand}.",
+    ),
+    "take_square_root_pm": (
+        "square_root_property",
+        "Take the square root of both sides ({operand}), remembering both signs.",
+    ),
 }
 
 INEQUALITY_FLIP_NOTE = (

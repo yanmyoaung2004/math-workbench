@@ -15,11 +15,12 @@ from dataclasses import asdict
 from ..adapters.sympy_parser import SymPyParser
 from ..adapters.sympy_solver import SymPySolver
 from ..application.solve_linear import solve_linear
+from ..application.solve_quadratic import solve_quadratic
 from ..application.transform import transform_expression
 from ..domain.exceptions import MathEngineError, ValidationError
 from ..domain.models import Domain, Solution
 
-_OPS = {"solve_linear", "simplify", "expand", "factorise", "parse"}
+_OPS = {"solve_linear", "solve_quadratic", "simplify", "expand", "factorise", "parse"}
 
 
 def _solution_to_response(op: str, solution: Solution) -> dict:
@@ -55,6 +56,13 @@ def handle(request: dict) -> dict:
                     "result": {"kind": expr.kind}}
         if op == "solve_linear":
             return _solution_to_response(op, solve_linear(raw, parser, solver, domain))
+        if op == "solve_quadratic":
+            method = request.get("method", "auto")
+            if not isinstance(method, str):
+                return _error_response(op, ValidationError.code, "Method must be a string.")
+            return _solution_to_response(
+                op, solve_quadratic(raw, parser, solver, domain, method)
+            )
         return _solution_to_response(op, transform_expression(raw, op, parser, solver))
     except MathEngineError as exc:
         return _error_response(op, exc.code, str(exc))

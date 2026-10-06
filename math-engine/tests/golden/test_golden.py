@@ -8,18 +8,31 @@ import yaml
 from workbench_math.adapters.sympy_parser import SymPyParser
 from workbench_math.adapters.sympy_solver import SymPySolver
 from workbench_math.application.solve_linear import solve_linear
+from workbench_math.application.solve_quadratic import solve_quadratic
 from workbench_math.domain.exceptions import MathEngineError
 from workbench_math.domain.models import Domain
 
-CASES = yaml.safe_load((Path(__file__).parent / "linear.yaml").read_text(encoding="utf-8"))
+HERE = Path(__file__).parent
+CASES = []
+for name in ("linear.yaml", "quadratics.yaml"):
+    for case in yaml.safe_load((HERE / name).read_text(encoding="utf-8")):
+        case.setdefault("op", "solve_linear")
+        CASES.append(case)
 PARSER = SymPyParser()
 SOLVER = SymPySolver()
 
 
-@pytest.mark.parametrize("case", CASES, ids=[c["input"] for c in CASES])
-def test_golden_linear(case):
+def _run(case):
+    if case["op"] == "solve_quadratic":
+        return solve_quadratic(
+            case["input"], PARSER, SOLVER, Domain.REALS, case.get("method", "auto"))
+    return solve_linear(case["input"], PARSER, SOLVER, Domain.REALS)
+
+
+@pytest.mark.parametrize("case", CASES, ids=[f"{c['op']}:{c['input']}" for c in CASES])
+def test_golden(case):
     try:
-        sol = solve_linear(case["input"], PARSER, SOLVER, Domain.REALS)
+        sol = _run(case)
     except MathEngineError as exc:
         assert case.get("error") == exc.code, f"{case['input']}: expected {case.get('error')}, got {exc.code}"
         return
@@ -28,4 +41,4 @@ def test_golden_linear(case):
     assert [s.operation for s in sol.steps] == [str(op) for op in case.get("ops", [])]
     assert sol.verification == "verified"
     if "approx" in case:
-        assert float(sol.approximate[0]) == pytest.approx(case["approx"])
+        assert abs(float(sol.approximate[0])) == pytest.approx(case["approx"])
