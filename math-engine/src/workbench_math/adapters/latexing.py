@@ -11,6 +11,7 @@ boundary (application stays presentation-free, domain stays stdlib-only).
 
 from __future__ import annotations
 
+import re
 from dataclasses import replace
 
 from sympy import latex as _latex
@@ -21,17 +22,19 @@ from ._sympy_common import to_sympy
 
 _REL_OPS = (">=", "<=", "=", "<", ">")
 
+# A standalone factor "1 ·" from unevaluated a/b representation — never part of
+# a larger number (lookbehind guards "21 · x").
+_TRIVIAL_ONE = re.compile(r"(?<![\d}])1 \\cdot ")
+
 
 def latex_side(text: str) -> str:
     try:
         rendered = _latex(to_sympy(text, evaluate=False))
     except Exception:
         return text
-    # "1/2" parses (unevaluated) as 1*(1/2); fold the trivial leading "1 ·"
+    # "1/2" parses (unevaluated) as 1*(1/2); fold a standalone "1 ·" anywhere
     # so fractions print cleanly. Genuine structure ("2*(x+3)") is untouched.
-    if rendered.startswith("1 \\cdot "):
-        return rendered[len("1 \\cdot "):]
-    return rendered
+    return _TRIVIAL_ONE.sub("", rendered)
 
 
 def latex_of(text: str) -> str:

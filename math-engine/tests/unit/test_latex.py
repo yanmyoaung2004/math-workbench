@@ -26,6 +26,13 @@ def test_operand_arithmetic_survives():
         "\\left(x - 3\\right) \\left(2 x - 1\\right) = 0")
 
 
+def test_mid_expression_fractions_fold_cleanly():
+    assert latex_of("x/2 + 1/3 = 5/6") == (
+        "\\frac{x}{2} + \\frac{1}{3} = \\frac{5}{6}")
+    # ...but genuine coefficients are never eaten:
+    assert latex_of("21*x = 42") == "21 x = 42"
+
+
 def test_garbage_passes_through_unchanged():
     assert latex_of("@@@not math@@@") == "@@@not math@@@"
     assert latex_of("") == ""
