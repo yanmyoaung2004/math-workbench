@@ -26,7 +26,9 @@ ALLOWED = {
     # use domain/ports plus the shared sympy plumbing in adapters/_sympy_common,
     # but never adapter classes, application use-cases, or entrypoints.
     "graph": {"graph", "domain", "ports", "adapters"},
-    "entrypoints": {"entrypoints", "adapters", "application", "ports", "domain", "graph"},
+    # practice/ orchestrates application use-cases with a seeded stdlib RNG.
+    "practice": {"practice", "application", "ports", "domain"},
+    "entrypoints": {"entrypoints", "adapters", "application", "ports", "domain", "graph", "practice"},
 }
 # Third-party distributions each layer may import (stdlib always allowed).
 THIRD_PARTY = {

@@ -29,11 +29,13 @@ from ..graph.intersections import intersect
 from ..graph.models import SampleRequest
 from ..graph.sampler import sample
 from ..graph.tables import table_values
+from ..practice.generator import DIFFICULTIES, TOPICS, generate_questions
+from ..practice.mastery import Attempt, recommend, topic_mastery
 
 _OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
         "simplify", "expand", "factorise", "parse",
         "sample_graph", "analyze_graph", "table_values", "solve_intersection",
-        "history_list", "history_clear"}
+        "history_list", "history_clear", "practice_generate", "practice_score"}
 
 # Ops whose verified results are recorded in local history (calculation log).
 _SAVED_OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
@@ -70,7 +72,8 @@ def handle(request: dict) -> dict:
             f"Unknown op {op!r}. Choose one of: {', '.join(sorted(_OPS))}.",
         )
     raw = request.get("input", "")
-    if op not in ("solve_system", "solve_intersection", "history_list", "history_clear") and (
+    if op not in ("solve_system", "solve_intersection", "history_list",
+                  "history_clear", "practice_generate", "practice_score") and (
         not isinstance(raw, str) or not raw.strip()
     ):
         return _error_response(op, ValidationError.code, "Please enter a mathematical expression or equation.")
@@ -144,6 +147,36 @@ def handle(request: dict) -> dict:
             store = SqliteHistory(data_dir() / "history.db")
             return {"ok": True, "op": op, "interpretation": "",
                     "result": {"cleared": store.clear()}}
+        if op == "practice_generate":
+            topic = request.get("topic", "")
+            difficulty = request.get("difficulty", "")
+            try:
+                n = int(request.get("n", 5))
+                seed = int(request.get("seed", 0))
+            except (TypeError, ValueError):
+                return _error_response(op, ValidationError.code, "n and seed must be integers.")
+            if topic not in TOPICS or difficulty not in DIFFICULTIES:
+                return _error_response(
+                    op, ValidationError.code,
+                    f"Choose topic in {list(TOPICS)} and difficulty in {list(DIFFICULTIES)}.")
+            questions = generate_questions(topic, difficulty, n, seed, parser, solver)
+            return {"ok": True, "op": op, "interpretation": "",
+                    "result": {"questions": [asdict(q) for q in questions]}}
+        if op == "practice_score":
+            raw_attempts = request.get("attempts", [])
+            if not isinstance(raw_attempts, list):
+                return _error_response(op, ValidationError.code, "Send attempts as a list.")
+            try:
+                attempts = tuple(
+                    Attempt(topic=str(a["topic"]), correct=bool(a["correct"]),
+                            hints_used=int(a.get("hints_used", 0)))
+                    for a in raw_attempts
+                )
+            except (KeyError, TypeError, ValueError, AttributeError):
+                return _error_response(op, ValidationError.code, "Each attempt needs topic, correct, hints_used.")
+            mastery = topic_mastery(attempts)
+            return {"ok": True, "op": op, "interpretation": "",
+                    "result": {"mastery": mastery, "recommendation": recommend(mastery)}}
         return _error_response(op, ValidationError.code, f"Unhandled op {op!r}.")
     except MathEngineError as exc:
         return _error_response(op, exc.code, str(exc))

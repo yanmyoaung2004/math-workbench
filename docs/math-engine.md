@@ -35,6 +35,11 @@ asymptotes, gradient — all engine cross-checked), `table_values`
 (Fraction-exact `start/end/step` strings; `"undefined"` cells), and
 `solve_intersection` (`inputs: [f, g]` → verified points; `[]` when parallel).
 
+Practice (deterministic, offline): `practice_generate` (`topic`, `difficulty`,
+`n ≤ 50`, `seed` → engine-verified numeric questions; same seed = same paper)
+and `practice_score` (`attempts` → per-topic mastery % with hint penalty +
+weakest-topic recommendation; transparent, no ML).
+
 History (offline-first, SQLite): every successful solve/transform auto-saves to
 `$WORKBENCH_DATA_DIR/history.db` (default `~/.math-workbench/history.db`, schema
 v1, failures never break math). `history_list` (`limit`, newest-first) and

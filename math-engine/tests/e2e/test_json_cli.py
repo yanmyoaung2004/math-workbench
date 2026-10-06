@@ -67,6 +67,21 @@ def test_graph_ops_round_trip():
     assert met["ok"] is True and met["result"]["points"][0]["x"] == 3.0
 
 
+def test_practice_ops_round_trip():
+    responses = run_requests([
+        {"op": "practice_generate", "topic": "linear", "difficulty": "basic",
+         "n": 3, "seed": 11},
+        {"op": "practice_score", "attempts": [
+            {"topic": "linear", "correct": True, "hints_used": 0},
+            {"topic": "linear", "correct": False, "hints_used": 3}]},
+    ])
+    generated, scored = responses
+    assert generated["ok"] is True and len(generated["result"]["questions"]) == 3
+    assert all(q["expected"] for q in generated["result"]["questions"])
+    assert scored["ok"] is True
+    assert scored["result"]["mastery"] == {"linear": 50.0}
+
+
 def test_history_auto_save_and_list(tmp_path):
     import os
 
