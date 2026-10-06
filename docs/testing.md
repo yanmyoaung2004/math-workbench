@@ -12,7 +12,8 @@ math-engine/tests/
   property/       Hypothesis: randomized equations, invariant substitute(solution)==True
   golden/         GCSE corpus: input/expected_answer/expected_steps/expected_domain (YAML)
   regression/     one file per fixed math bug: tests/regression/test_<issue>.py (never delete)
-  e2e/ (later)    json_cli stdio round-trips; (Phase 4) equation entry, graph, hints, practice flows
+  e2e/    json_cli stdio round-trips (shipped); equation entry, graph, hints,
+          practice flows covered via protocol + service tests
 ```
 
 Plus `tests/educational/`: step order, rule names, GCSE wording, hint-level
@@ -50,9 +51,12 @@ Golden corpus covers this matrix; see `tests/golden/*.yaml` for the enrolled cas
 
 ## 5. Regression policy
 
-Every math bug → minimal reproducer added under `tests/regression/` in the SAME
-commit as the fix, named `test_<short-slug>.py`, referencing the lifecycle-log entry.
-No fix without a failing-first test.
+Every math bug that reaches a user gets a minimal reproducer under
+`tests/regression/` in the SAME commit as the fix (append-only: never delete).
+Bugs caught during development are covered in-tier instead (unit/integration/
+golden) — e.g. the `Eq()` display, auto-expansion, and pole-spanning fixes —
+with `tests/regression/` reserved for audit- or user-found escapes
+(e.g. `test_tan_wide_viewport.py`).
 
 ## 6. What we defer (explicitly, not by neglect)
 

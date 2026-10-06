@@ -10,8 +10,9 @@ Every phase ends with docs + green tests + a tagged commit.
   → 5 UI (premium) → 6 AI tutor → 7 Teacher tools → 8 Packaging/hardening
 ```
 
-Current position: **Phase 1a done** (engine bootstrap + linear slice). See
-`lifecycle-log.md` for the dated gate record.
+Current position: **V1 MVP complete** (engine + graph + history + practice + AI +
+premium UI + Tauri shell + sidecar; tag `v1-mvp`). See `lifecycle-log.md` for
+the dated task-level gate record. Post-V1: teacher tools, installers.
 
 Inside a phase: `inspect → plan → smallest coherent change → test → review →
 fix → document decision → report + next step` (AGENTS.md working agreements).
@@ -37,13 +38,12 @@ No phase is "done" with failing/hidden tests or untested math. Correctness outra
 
 ## 4. Git workflow (stakeholder requirement: commit every task/phase)
 
-- Branch: `master` for now (single engineer + agents); feature branches when parallel work starts (`feat/<slug>`).
+- Branch: `main` (single-branch history; remote `origin` exists — push only when asked).
 - Commit every coherent task; every phase gate is its own commit. Never bundle unrelated changes.
 - Format: `type: short imperative` — `feat|fix|test|docs|chore|perf|refactor`.
-  Examples: `feat: add linear equation solver`, `fix: handle negative inequality division`,
-  `test: add quadratic regression cases`, `docs: baseline phase 0 SDLC`.
+  Examples: `feat: add linear equation solver`, `test: add quadratic regression cases`.
 - Each commit: what + why (1–2 lines) + test evidence (`pytest -q` result) in the body for math changes.
-- Tags: `phase-0`, `phase-1a`, … at gate commits.
+- Tags: `phase-0`, `phase-1a`, `v1-mvp`, … at gate commits.
 
 ## 5. Research-before-code rule (stakeholder requirement: facts, not guesses)
 

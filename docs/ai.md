@@ -22,7 +22,8 @@ waits on AI: solve renders immediately, explanations generate after.
 
 ## Protocol ops
 
-`ai_explain` (`solution` + `question` + `attempt?` + `mistake?` + `hints_shown?`),
+`ai_explain` (`solution` + `question` + `attempt?` + `mistake?` + `hints_shown?` +
+`level?`, default `gcse`),
 `ai_hint` (`solution` + `level` 1–5 + `step_index?`), `ai_mistake`
 (`expected_step` + `student_after` → `correct` flag or classified correction).
 `solution`/`expected_step` are objects copied from a solve response.

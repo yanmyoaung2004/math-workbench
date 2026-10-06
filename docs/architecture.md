@@ -23,34 +23,38 @@ No microservices. No network for core math. See ADR-0003 for why sidecar over lo
 ```text
 ┌─ Primary/driving adapters ─────────────────┐
 │ entrypoints/json_cli.py  (stdin JSON→stdout)│  ◀── Tauri sidecar spawns this
-│ (future) tauri commands, React services     │
+│ React services (typed DTO client + mock)    │
 └───────────────────┬────────────────────────┘
                     │ primitives + DTOs only
 ┌─ Application (use-cases) ──────────────────┐
-│ application/solve_equation.py               │  orchestrate: parse→solve→verify→steps
-│ application/simplify_expression.py          │
+│ solve_linear|quadratic|system|inequality   │  orchestrate: parse→solve→verify→steps
+│ transform.py (simplify|expand|factorise)   │
 └──────┬──────────────────────┬──────────────┘
        │                      │ depends on ABCs (DIP)
 ┌─ Domain (pure, stdlib) ─┐ ┌─ Ports (ABCs) ─────────────┐
 │ domain/models.py         │ │ ports/parser_port.py       │
 │  Expression, Solution,   │ │ ports/solver_port.py       │
-│  Step, HintLevel, Error  │ │ ports/verifier_port.py     │
-│ domain/exceptions.py     │ └────────────────────────────┘
-│ domain/curriculum.py     │                ▲ implements
+│  Step, Binding           │ │ ports/history_port.py      │
+│ domain/exceptions|steps  │ └────────────────────────────┘
+│ domain/verify.py         │                ▲ implements
 └─────────────────────────┘ ┌─ Secondary/driven adapters ──────────────┐
-                            │ adapters/sympy_parser.py  (import sympy) │
-                            │ adapters/sympy_solver.py  (import sympy) │
-                            │ adapters/inmemory_history.py (later SQLite)│
+                            │ adapters/sympy_parser|sympy_solver       │
+                            │ adapters/sqlite_history (v1, user_version)│
+                            │ adapters/latexing (presentation only)    │
                             └──────────────────────────────────────────┘
 ```
 
 ### Import rules (enforced by `tests/unit/test_architecture.py`)
 
-- `domain/` → stdlib + typing only. NEVER imports `sympy`, adapters, application.
+- `domain/` → stdlib only. NEVER imports third-party, adapters, application.
 - `ports/` → stdlib + domain only.
 - `application/` → domain + ports only.
-- `adapters/` → domain + ports + third-party (`sympy`). Only layer allowed to import `sympy`.
-- `entrypoints/` → application + adapters (wiring) + stdlib. Only JSON/shape validation here.
+- `adapters/` → anything (ONLY unrestricted layer: sympy, sqlite3, urllib-adjacent).
+- `graph/` → domain + ports + `adapters/_sympy_common` plumbing only; sympy+numpy allowed.
+- `practice/` → application + ports + domain (seeded stdlib RNG orchestration).
+- `ai/` → domain + ports; stdlib only (provider HTTP via urllib).
+- `entrypoints/` → wires everything above into the JSON protocol (validation,
+  history auto-save, LaTeX enrichment, AI/practice/graph dispatch).
 
 Rationale: SymPy stays swappable; domain/steps testable without SymPy installed
 (unit tier uses fakes); sidecar protocol depends on DTOs, not SymPy objects.
@@ -66,9 +70,9 @@ adapter classes, application use-cases, or entrypoints. Enforced by
 ## 3. Request flow (the non-negotiable pipeline)
 
 ```text
-raw string → ParserPort.parse (parse_expr, implicit-mult+convert_xor) → Expression (canonical str + latex-ish)
-           → SolverPort.solve (solveset, domain=Reals default for GCSE) → raw solutions
-           → VerifierPort.check (subs + simplify(a-b)==0, exact semantics)
+raw string → ParserPort.parse (parse_expr, implicit-mult+convert_xor) → Expression (canonical str + kind)
+           → SolverPort.solve_* (solveset, domain=Reals default for GCSE) → facts + set_tag
+           → application maps tags to error codes; verifier checks (subs + simplify(a-b)==0, exact semantics)
            → StepBuilder (domain pure fn: operation/operand/before/after/rule/explanation/verification)
            → Solution{exact[], approximate[], steps[], verification} → JSON → UI renders immediately
                                                                       → AI explains async (Phase 5)
@@ -84,17 +88,19 @@ Engine cannot solve (`ConditionSet`/NotImplemented) → `UnsolvableError` ("coul
 - Transport V1: **long-lived stdio JSON-lines** (`spawn()` + `child.write()`), one JSON
   request per line, one JSON response per line. Avoids port conflicts and localhost
   security surface; localhost HTTP reserved as fallback if profiling demands it.
-- Request/response shapes: see `docs/math-engine.md`. Every response carries
-  `ok`, `verification`, and machine-readable `error.code` on failure.
+- Request/response shapes: see `docs/math-engine.md`. Solve/transform responses
+  carry `ok`, `verification`, and machine-readable `error.code` on failure;
+  graph/history/practice/AI ops return their own result shapes (no fake
+  verification field).
 
-## 5. Frontend (Phase 4 — reserved, premium bar set now)
+## 5. Frontend (shipped — premium bar held)
 
-- React strict-TS + Vite + Tailwind + shadcn/ui; Zustand (app state), TanStack Query (async AI/data).
-- No math logic in components: components call engine service (`solveLinear(input)`)
-  returning `Solution` DTOs; Math.js allowed only for trivial client eval/units.
-- Graphing behind `GraphRenderer` interface (Plotly.js first: sampled lines;
-  `scattergl` only for large data). Renderer takes pre-sampled points + discontinuity
-  breaks computed by engine — never auto-connects across gaps.
+- React strict-TS + Vite + Tailwind v4 + hand-rolled tokens (no shadcn dependency);
+  Zustand (app state), TanStack Query (async AI/data); KaTeX (bundled fonts, offline).
+- No math logic in components: components call the engine service
+  (`solveLinear(input)`) returning DTOs; no client-side solver duplication.
+- Graphing via Plotly.js traces built from engine `segments` (discontinuity
+  breaks computed by the engine — never auto-connected across gaps).
 - Premium bar (explicit stakeholder ask): clarity-first workflow
   (enter → see interpretation → answer → expand steps → hint → visualize → practice),
   keyboard shortcuts, Desmos-feel pan/zoom, accessible graph text alternatives.
@@ -102,16 +108,16 @@ Engine cannot solve (`ConditionSet`/NotImplemented) → `UnsolvableError` ("coul
 
 ## 6. Data (SQLite, offline-first)
 
-Tables (Phase 1: `history` only; rest land with features):
-`students, classes, questions, attempts, solutions, mistakes, topics, settings, history`.
-Migrations via versioned SQL in `database/migrations/` (to be created with persistence adapter).
+Shipped: `history` table via `adapters/sqlite_history.py`, schema v1 gated by
+`PRAGMA user_version` (future migrations bump it — no separate `database/`
+folder). Teacher-mode tables (`students, classes, …`) land post-V1.
 
-## 7. AI integration (Phase 5 — constraints binding now)
+## 7. AI integration (shipped with offline default)
 
-`AIProvider` interface + `TutorService/Explanation/Hints/QuestionGen/MistakeAnalysis`
-use-cases. Every AI call receives verified engine output as ground truth in prompt;
-output is post-checked (numbers/steps referenced must match engine DTOs).
-AI failures degrade to "explanation unavailable" — math stays visible.
+`ProviderPort` + `StubProvider` + OpenAI-compatible REST + `TutorService` with
+fallback + deterministic `hints.py` ladder + `mistakes.py` classifier
+(see `docs/ai.md`). Every AI call receives verified engine output as ground
+truth; failures degrade to the deterministic fallback — math stays visible.
 
 ## 8. Quality attributes → tactics
 

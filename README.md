@@ -19,8 +19,8 @@ input → parser → normalized repr → SymPy engine → verified result → st
 | Layer    | Choice (see `docs/architecture.md`)                          |
 |----------|--------------------------------------------------------------|
 | Desktop  | Tauri 2, Windows-first, Python sidecar via `externalBin`     |
-| Frontend | React + TS strict + Vite + Tailwind + shadcn/ui + Zustand + TanStack Query (not started — Phase 4) |
-| Math     | Python + SymPy (truth), NumPy/SciPy (numeric), Math.js (light client eval only) |
+| Frontend | React 19 + TS strict + Vite + Tailwind v4 + hand-rolled tokens + Zustand + TanStack Query + KaTeX + Plotly.js |
+| Math     | Python + SymPy (truth), NumPy (graph sampling only) |
 | Graphing | Plotly.js behind replaceable renderer abstraction            |
 | Storage  | SQLite, offline-first                                        |
 | AI       | `AIProvider` abstraction, async/non-blocking, never in solve path |
