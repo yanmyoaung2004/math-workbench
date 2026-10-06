@@ -3,7 +3,7 @@ name = "workbench-math"
 version = "0.1.0"
 description = "Deterministic GCSE math engine (hexagonal core) for Math Workbench"
 requires-python = ">=3.11"
-dependencies = ["sympy>=1.12"]
+dependencies = ["sympy>=1.12", "numpy>=1.26"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "hypothesis>=6", "pyyaml>=6"]
