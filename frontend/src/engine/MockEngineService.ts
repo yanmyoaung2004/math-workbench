@@ -104,6 +104,9 @@ export class MockEngineService extends BaseEngineService {
         result: { explanation: "[mock tutor] Subtract 5, then divide by 2.", provider: "mock" },
       };
     }
+    if (op === "ai_mistake") {
+      return { ok: true, op, interpretation: LINEAR.interpretation, result: { correct: true } };
+    }
     throw new EngineError("VALIDATION_ERROR", `Mock has no fixture for op ${op}.`);
   }
 }

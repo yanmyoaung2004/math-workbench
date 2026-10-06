@@ -79,6 +79,12 @@ export abstract class BaseEngineService {
   aiExplain(solution: unknown, question: string): Promise<{ explanation: string; provider: string }> {
     return this.result({ op: "ai_explain", solution, question });
   }
+
+  aiMistake(expectedStep: unknown, studentAfter: string): Promise<{
+    correct: boolean; category?: string; explanation?: string; correction?: string;
+  }> {
+    return this.result({ op: "ai_mistake", expected_step: expectedStep, student_after: studentAfter });
+  }
 }
 
 export class SessionEngineService extends BaseEngineService {
