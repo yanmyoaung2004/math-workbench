@@ -10,36 +10,14 @@ Rules (product.md graph spec):
 from __future__ import annotations
 
 import numpy as np
-from sympy import Interval, S, Symbol, lambdify
-from sympy.calculus.singularities import singularities
+from sympy import lambdify
 
-from ..adapters._sympy_common import canonical, to_sympy
 from ..domain.exceptions import ParseError, ValidationError
 from ..ports.parser_port import ParserPort
+from .functions import finite_poles, resolve_function
 from .models import SampleRequest, SampleResult, Segment
 
 _MAX_POINTS = 5000
-
-
-def _rhs_of(raw: str, parser: ParserPort) -> tuple[str, object, Symbol]:
-    """Return (interpretation, sympy_expr, x) for 'y = f' or bare 'f'."""
-    expr = parser.parse(raw)
-    text = expr.canonical
-    if expr.kind == "equation":
-        sides = text.split("=", 1)
-        if sides[0].strip() != "y":
-            raise ValidationError(
-                "For graphing, enter 'y = ...' in x — e.g. y = x^2 + 1."
-            )
-        text = sides[1].strip()
-    parsed = to_sympy(text)
-    symbols = parsed.free_symbols
-    if len(symbols) > 1:
-        raise ValidationError("Graphs show functions of x only in V1.")
-    x = next(iter(symbols)) if symbols else Symbol("x")
-    if x.name != "x":
-        raise ValidationError("Use x as the variable for graphing in V1.")
-    return text, parsed, x
 
 
 def _evaluate(fn, xs: np.ndarray) -> np.ndarray:
@@ -93,7 +71,7 @@ def sample(request: SampleRequest, parser: ParserPort) -> SampleResult:
     if not 2 <= request.n_points <= _MAX_POINTS:
         raise ValidationError(f"Ask for 2–{_MAX_POINTS} points.")
     try:
-        text, parsed, x = _rhs_of(request.expression, parser)
+        text, parsed, x = resolve_function(request.expression, parser)
     except (ParseError, ValidationError):
         raise
     except Exception as exc:
@@ -118,18 +96,5 @@ def sample(request: SampleRequest, parser: ParserPort) -> SampleResult:
             ys=tuple(float(v) for v in ys[idx]),
         ))
 
-    try:
-        poles = singularities(parsed, x, domain=S.Reals)
-        if not getattr(poles, "is_FiniteSet", False):
-            # Periodic poles (e.g. tan) arrive as infinite ImageSets — iterating
-            # them would hang forever, so clip to the viewport first (which
-            # resolves to a FiniteSet) and only use it if finite.
-            clipped = poles.intersect(Interval(request.x_min, request.x_max))
-            poles = clipped if getattr(clipped, "is_FiniteSet", False) else S.EmptySet
-        excluded = tuple(sorted(
-            float(p) for p in poles
-            if getattr(p, "is_real", False) and request.x_min < float(p) < request.x_max
-        ))
-    except Exception:
-        excluded = ()
+    excluded = finite_poles(parsed, x, float(request.x_min), float(request.x_max))
     return SampleResult(interpretation=text, segments=tuple(segments), excluded=excluded)
