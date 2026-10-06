@@ -80,5 +80,41 @@ SymPy 1.14). The skip is a Phase-7 PyInstaller parity placeholder.
 ## Next — Phase 1b (planned, not started)
 
 Quadratics (factor/formula/completing-square), systems (`linsolve`), inequalities
-(sign-flip steps), same-side collect step, golden growth per edge matrix.
+(sign-flip steps), expand/factorise hardening, golden corpus growth per edge matrix.
 Premium UI stays deferred to Phase 4 by architectural design (stable engine first).
+
+---
+
+## 2026-10-06 — V1 end-to-end build (roadmap `docs/roadmap-v1.md`)
+
+One commit per task, tests written with code, full suite green before moving on.
+Engine: **157 passed, 1 skipped** (CPython 3.12, SymPy 1.14, numpy 2.5).
+Frontend: `tsc -b` strict clean, `vite build` emits dist, vitest 7 passed.
+
+| Commit | Task | Evidence |
+|--------|------|----------|
+| `f9e913b` | docs: V1 end-to-end roadmap (stages A–G, DONE = product MVP) | toolchain probed: Rust 1.98, VS BuildTools, WebView2, npm registry |
+| `6e37d13` | chore: numpy dependency for graph sampling | venv 2.5.3 |
+| `84c57b8` | A1 quadratics: auto/factorise/formula/complete-square + joined multi-root finals | golden + Hypothesis root invariants |
+| `83efad2` | A2 systems 2x2: linsolve tags, elimination chains, named bindings, system substitution check | golden + planted-solution properties |
+| `9f2f269` | A3 inequalities: interval phrases, flip step with reversal rule, test-point verification | golden + flip-always property |
+| `c3ba564` | B educational tier: order/rules/wording gates, banned-terms list | 7 pedagogy tests |
+| `dca0823` | C1 graph sampler: lambdify/numpy, jump + non-finite splits, viewport-clipped poles (infinite ImageSets never iterated) | 1/x exactly 2 segments; tan ≥ 3 |
+| `e4f3122` | C2 analysis: roots/intercept/turning/axis/asymptotes/gradient, substitution cross-checks | x²−4x+3 full feature set |
+| `cbb340e` | C3 tables (Fraction-exact, undefined cells), intersections, 4 graph protocol ops | e2e graph round-trips |
+| `0261c7d` | D1 SQLite history: versioned schema, auto-save, list/clear ops, e2e home-dir isolation | migration-gate test |
+| `39c6eb0` | D2 practice: seeded templates, 100% engine verification, transparent mastery + recommendation | all topics × difficulties |
+| `318eaf7` | E AI: provider seam + stub + urllib REST (loopback-proven), grounded tutor with fallback, L1–L5 hints, mistake classifier | no network in tests |
+| `224da61` | F1 frontend scaffold: Vite + React 19 + strict TS + Tailwind v4 + tokens | 121 packages |
+| `ea76b9f` | F2 engine service: FIFO session, sidecar spawn, mock, zustand store | vitest protocol + mock |
+| `976c545` | F3 screens: solver/graph/practice/history/settings; plugin-shell v2 fix (events on Command) | tsc + build green |
+| `e361ffe` | F4 frontend docs + verification record | tsc, build, vitest |
+| `c28f343` | G1 Tauri shell: sidecar contract, scoped capabilities, generated icons | PNG/ICO validated |
+| `669cafc` | G2 PyInstaller onefile sidecar (30 MB), protocol smoke test through the binary | solve + sample via exe |
+| `69d3f10` | G3 desktop exe links (11.8 MB), launch smoke test (alive + responding + titled) | MSVC via VsDevCmd |
+
+**Tag `v1-mvp`.** Known gaps (recorded, not hidden): installer bundles need
+NSIS/WiX; in-app sidecar spawn proven at `tauri dev`/bundle time
+(docs/packaging.md). Post-V1 per product: teacher analytics, adaptive ML,
+advanced modules. Branch note: repo init created `master`; active branch is
+`main` (single-branch history, 50+ commits).

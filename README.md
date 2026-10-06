@@ -48,13 +48,23 @@ math-engine/src/workbench_math/
   entrypoints/   json_cli (stdin JSON → stdout JSON, the future Tauri sidecar protocol)
 ```
 
-## Current status
+## Current status (2026-10-06, tag `v1-mvp`)
 
 - [x] Phase 0 — requirements, architecture, API contracts, testing strategy (`docs/`)
-- [x] Phase 1a — engine bootstrap: parser, normalizer, verifier, linear solver, step engine, tested
-- [ ] Phase 1b — quadratics, systems, inequalities, expand/factorise hardening
-- [ ] Phase 2 — full step engine  - [ ] Phase 3 — graph engine  - [ ] Phase 4 — premium UI (deferred by design, not skipped)
-- [ ] Phase 5+ — AI tutor, teacher tools, packaging
+- [x] Phase 1 — engine: parser, simplify/expand/factorise, linear, quadratics
+      (3 paths), systems 2x2, inequalities (sign-flip), all verified + stepped
+- [x] Phase 2 — step engine + educational tier (order/rules/wording gates)
+- [x] Phase 3 — graph engine: sampler (discontinuity-safe), analysis
+      (roots/turning/asymptotes/gradient), Fraction-exact tables, intersections
+- [x] Engine extras — SQLite history, deterministic practice + mastery,
+      grounded AI (stub default, hint ladder, mistake classifier)
+- [x] Phase 4 — premium UI: solver/graph/practice/history/settings over a
+      typed engine service (sidecar under Tauri, mock in browser)
+- [x] Phase 7 — Tauri shell compiles (11.8 MB exe, launch smoke-tested);
+      30 MB PyInstaller sidecar speaks the protocol
+- [ ] Shippable installers (needs NSIS/WiX) and in-app sidecar proof via
+      `tauri dev` — recorded gaps in `docs/packaging.md`
+- [ ] Post-V1 (per product): teacher analytics, adaptive ML, advanced modules
 
 ## Quickstart (engine)
 
