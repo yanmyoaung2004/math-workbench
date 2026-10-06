@@ -118,3 +118,31 @@ NSIS/WiX; in-app sidecar spawn proven at `tauri dev`/bundle time
 (docs/packaging.md). Post-V1 per product: teacher analytics, adaptive ML,
 advanced modules. Branch note: repo init created `master`; active branch is
 `main` (single-branch history, 50+ commits).
+
+---
+
+## 2026-10-07 — Independent audit + fixes (4 parallel audit agents)
+
+Engine agent: 162 passed + all 21 ops probed + error taxonomy + hand-checks.
+Frontend agent: tsc/vitest/build green, zero contract drift across 5 probed ops,
+9 low-severity notes. Packaging agent: three-way sidecar string MATCH, fresh
+bundle, but found the shipped sidecar stale (pre-latex → Solver crash) plus
+stray smoke rows in the user DB. Docs agent: full drift table (contracts,
+architecture, AGENTS, README, ADRs verified, lifecycle hashes resolve).
+
+Fixes, one commit per task (all suites re-greened):
+
+- pole-aware graph splitting + `tests/regression/test_tan_wide_viewport.py`
+  (wide tan spanned π/2 — now 5 segments, no pole spanned)
+- mid-expression LaTeX fold (`1·½` → `½`, digit/brace-guarded)
+- frontend gaps: `parse()` + full mock fixtures, expand/factorise tabs,
+  fieldset/aria-pressed, connection feedback, theme-subscribed plot, keys,
+  overflow guards, history fallback
+- docs reconciled (contracts v1, architecture, AGENTS, README, testing,
+  packaging); `Cargo.lock` committed; `gen/` ignored
+- sidecar rebuilt (30.1 MB) and re-smoked with isolated data dir
+  (`\frac{x}{2} + \frac{1}{3}`, tan 5 segments/4 poles); stray history cleared;
+  exe relinked; app relaunched and responding
+
+Final gates: engine **164 passed, 1 skipped**; frontend tsc strict clean,
+vitest **10 passed**, `vite build` green. **Tag `v1-mvp-verified`.**
