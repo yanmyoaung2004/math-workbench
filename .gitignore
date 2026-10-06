@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.hypothesis/
+htmlcov/
+.coverage*
+
+# Node / frontend (future)
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Tauri (future)
+src-tauri/target/
+src-tauri/binaries/
+*.AppImage
+*.deb
+*.dmg
+*.exe
+*.msi
+*.nsis.zip
+
+# SQLite / local data
+*.db
+*.db-journal
+*.sqlite
+*.sqlite-journal
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+logs/
