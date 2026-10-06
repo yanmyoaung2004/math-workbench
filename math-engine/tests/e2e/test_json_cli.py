@@ -82,6 +82,31 @@ def test_practice_ops_round_trip():
     assert scored["result"]["mastery"] == {"linear": 50.0}
 
 
+def test_ai_ops_round_trip():
+    solved = run_requests([{"op": "solve_linear", "input": "2x + 5 = 17"}])[0]
+    solution = solved["result"]
+    hinted, explained, judged = run_requests([
+        {"op": "ai_hint", "solution": solution, "level": 1},
+        {"op": "ai_explain", "solution": solution, "question": "Why subtract 5?"},
+        {"op": "ai_mistake",
+         "expected_step": solution["steps"][0], "student_after": "2*x + 3 = 14"},
+    ])
+    assert hinted["ok"] is True and "x = 6" not in hinted["result"]["hint"]
+    assert explained["ok"] is True and explained["result"]["provider"] == "stub"
+    assert judged["ok"] is True
+    assert judged["result"]["correct"] is False
+    assert judged["result"]["category"] == "sign"
+    assert judged["result"]["correction"] == "2*x = 12"
+    judged2 = run_requests([
+        {"op": "ai_mistake", "expected_step": {
+            "operation": "distribute", "operand": "2*(x + 3)",
+            "before": "2*(x + 3) = 14", "after": "2*x + 6 = 14",
+            "rule": "distributive_property", "explanation": "Expand.",
+            "verification": "verified"},
+         "student_after": "2*x + 3 = 14"}])[0]
+    assert judged2["result"]["category"] == "bracket_distribution"
+
+
 def test_history_auto_save_and_list(tmp_path):
     import os
 

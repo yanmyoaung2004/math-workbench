@@ -28,9 +28,12 @@ ALLOWED = {
     "graph": {"graph", "domain", "ports", "adapters"},
     # practice/ orchestrates application use-cases with a seeded stdlib RNG.
     "practice": {"practice", "application", "ports", "domain"},
-    "entrypoints": {"entrypoints", "adapters", "application", "ports", "domain", "graph", "practice"},
+    # ai/ explains verified DTOs; stdlib only (provider HTTP via urllib).
+    "ai": {"ai", "domain", "ports"},
+    "entrypoints": {"entrypoints", "adapters", "application", "ports", "domain", "graph", "practice", "ai"},
 }
 # Third-party distributions each layer may import (stdlib always allowed).
+# Only adapters (None = any) and graph opt in; every other layer is stdlib-only.
 THIRD_PARTY = {
     "adapters": None,  # any (sympy, numpy, ...)
     "graph": {"sympy", "numpy"},
@@ -61,7 +64,7 @@ def test_import_direction():
                     if top == "workbench_math":
                         violations.append(f"{path}: absolute intra-package import")
                     elif top not in STDLIB and top != "__future__":
-                        allowed_tp = THIRD_PARTY.get(layer)
+                        allowed_tp = THIRD_PARTY.get(layer, set())
                         if allowed_tp is None:
                             continue  # unrestricted layer (adapters)
                         if top not in allowed_tp:
@@ -94,7 +97,7 @@ def test_import_direction():
                                 f"{path}: {layer} must not depend on {dep_layer}"
                             )
                     elif top not in STDLIB and top != "__future__":
-                        allowed_tp = THIRD_PARTY.get(layer)
+                        allowed_tp = THIRD_PARTY.get(layer, set())
                         if allowed_tp is None:
                             continue  # unrestricted layer (adapters)
                         if top not in allowed_tp:
