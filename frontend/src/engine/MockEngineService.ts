@@ -43,11 +43,41 @@ export class MockEngineService extends BaseEngineService {
   protected async send(payload: Record<string, unknown>): Promise<EngineResponse> {
     const op = String(payload["op"] ?? "");
     const input = String(payload["input"] ?? "");
-    if (input.trim() === "" && !["solve_system", "history_list", "history_clear"].includes(op)) {
+    const needsInput = [
+      "solve_linear", "solve_quadratic", "solve_inequality",
+      "simplify", "expand", "factorise", "parse",
+      "sample_graph", "analyze_graph", "table_values",
+    ].includes(op);
+    if (needsInput && input.trim() === "") {
       return { ok: false, op, error: { code: "VALIDATION_ERROR", message: "Please enter something." } };
     }
     if (op === "solve_linear" || op === "solve_quadratic" || op === "solve_inequality") {
       return { ok: true, op, interpretation: LINEAR.interpretation, result: LINEAR };
+    }
+    if (op === "simplify" || op === "expand" || op === "factorise") {
+      return { ok: true, op, interpretation: input, result: { ...LINEAR, interpretation: input } };
+    }
+    if (op === "solve_system") {
+      return {
+        ok: true, op, interpretation: "2*x + y = 7; x - y = 2",
+        result: {
+          ...LINEAR, interpretation: "2*x + y = 7; x - y = 2",
+          exact: ["3", "1"], exact_latex: ["3", "1"],
+          bindings: [
+            { variable: "x", exact: "3", approximate: "3.0", exact_latex: "3" },
+            { variable: "y", exact: "1", approximate: "1.0", exact_latex: "1" },
+          ],
+        },
+      };
+    }
+    if (op === "solve_intersection") {
+      return {
+        ok: true, op, interpretation: "y = 2*x + 4 ; y = 10",
+        result: { points: [{ kind: "intersection", x: 3, y: 10, exact: "3", exact_latex: "3" }] },
+      };
+    }
+    if (op === "parse") {
+      return { ok: true, op, interpretation: input, result: { kind: "equation", interpretation: input } };
     }
     if (op === "sample_graph") {
       const xs: number[] = [];

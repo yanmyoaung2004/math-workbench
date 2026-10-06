@@ -25,4 +25,16 @@ describe("MockEngineService", () => {
     );
     await expect(service.solveLinear("   ")).rejects.toBeInstanceOf(EngineError);
   });
+
+  it("parses and covers transform/system/intersection fixtures", async () => {
+    const service = new MockEngineService();
+    await expect(service.parse("2x")).resolves.toMatchObject({ kind: "equation" });
+    await expect(service.transform("expand", "(x+1)^2")).resolves.toMatchObject({
+      verification: "verified",
+    });
+    const sys = await service.solveSystem(["2x + y = 7", "x - y = 2"]);
+    expect(sys.bindings.map((b) => [b.variable, b.exact])).toEqual([["x", "3"], ["y", "1"]]);
+    const met = await service.intersect("y = 2x + 4", "y = 10");
+    expect(met.points[0]).toMatchObject({ x: 3, y: 10 });
+  });
 });

@@ -5,7 +5,7 @@ import { EngineError, type SolutionResult } from "../engine/types.ts";
 import { Button, Card, EngineInput, ErrorBanner, GhostButton } from "../ui/primitives.tsx";
 import Math from "../ui/Math.tsx";
 
-type Op = "solve_linear" | "solve_quadratic" | "solve_inequality" | "solve_system" | "simplify";
+type Op = "solve_linear" | "solve_quadratic" | "solve_inequality" | "solve_system" | "simplify" | "expand" | "factorise";
 
 const OPS: { id: Op; label: string; placeholder: string }[] = [
   { id: "solve_linear", label: "Linear", placeholder: "2x + 5 = 17" },
@@ -13,6 +13,8 @@ const OPS: { id: Op; label: string; placeholder: string }[] = [
   { id: "solve_inequality", label: "Inequality", placeholder: "2x + 3 > 9" },
   { id: "solve_system", label: "System", placeholder: "2x + y = 7  |  x - y = 2" },
   { id: "simplify", label: "Simplify", placeholder: "2x + 3x" },
+  { id: "expand", label: "Expand", placeholder: "(x + 1)^2" },
+  { id: "factorise", label: "Factorise", placeholder: "x^2 + 2x + 1" },
 ];
 
 async function runSolve(op: Op, input: string): Promise<SolutionResult> {
@@ -25,6 +27,7 @@ async function runSolve(op: Op, input: string): Promise<SolutionResult> {
     if (parts.length !== 2) throw new EngineError("VALIDATION_ERROR", "Enter two equations separated by |.");
     return engine.solveSystem([parts[0], parts[1]]);
   }
+  if (op === "expand" || op === "factorise") return engine.transform(op, input);
   return engine.transform("simplify", input);
 }
 
@@ -46,12 +49,11 @@ export default function SolverScreen() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Solver mode">
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Solver mode">
         {OPS.map((o) => (
           <GhostButton
             key={o.id}
-            role="tab"
-            aria-selected={op === o.id}
+            aria-pressed={op === o.id}
             onClick={() => {
               setOp(o.id);
               solve.reset();
@@ -77,6 +79,7 @@ export default function SolverScreen() {
           onChange={(e) => setInput(e.target.value)}
           placeholder={active.placeholder}
           aria-label="Mathematical input"
+          className="min-w-0"
         />
         <Button type="submit" disabled={solve.isPending} className="w-full shrink-0 sm:w-auto">
           {solve.isPending ? "Solving…" : "Solve"}
@@ -125,7 +128,7 @@ export default function SolverScreen() {
             {result.steps.map((step, i) => (
               <li key={i} className="step-card rounded-r-lg bg-slate-50 py-2 pl-4 pr-3 dark:bg-white/5">
                 <p className="text-sm font-medium">Step {i + 1}: {step.explanation}</p>
-                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                <p className="mt-1 overflow-x-auto text-sm text-slate-600 dark:text-slate-300">
                   <Math tex={step.before_latex} fallback={step.before} />
                   <span className="mx-2">→</span>
                   <Math tex={step.after_latex} fallback={step.after} />

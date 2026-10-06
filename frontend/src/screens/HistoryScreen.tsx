@@ -34,11 +34,13 @@ export default function HistoryScreen() {
           <p className="text-xs uppercase tracking-wide text-slate-500">{entry.op}</p>
           <p className="mt-0.5"><Math tex={entry.interpretation_latex} fallback={entry.interpretation} /></p>
           <p className="mt-1 font-semibold">
-            {entry.exact_latex.map((tex, i) => (
-              <span key={i} className="mr-3">
-                <Math tex={tex} fallback={entry.exact[i]} />
-              </span>
-            ))}
+            {entry.exact_latex.length > 0
+              ? entry.exact_latex.map((tex, i) => (
+                  <span key={i} className="mr-3">
+                    <Math tex={tex} fallback={entry.exact[i]} />
+                  </span>
+                ))
+              : <Math tex={entry.interpretation_latex} fallback={entry.interpretation} />}
           </p>
           <p className="mt-1 text-xs text-slate-400">{new Date(entry.timestamp).toLocaleString()}</p>
         </Card>

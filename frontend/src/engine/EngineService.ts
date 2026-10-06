@@ -37,6 +37,10 @@ export abstract class BaseEngineService {
     return this.result({ op: kind, input });
   }
 
+  parse(input: string): Promise<{ kind: string }> {
+    return this.result({ op: "parse", input });
+  }
+
   sampleGraph(input: string, xMin = -10, xMax = 10, n = 400): Promise<SampleResult> {
     return this.result({ op: "sample_graph", input, x_min: xMin, x_max: xMax, n });
   }

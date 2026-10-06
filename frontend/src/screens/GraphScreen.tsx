@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import Plotly from "plotly.js-dist-min";
 import { getEngine } from "../engine/index.ts";
 import { EngineError, type AnalysisResult, type SampleResult } from "../engine/types.ts";
+import { effectiveTheme, useAppStore } from "../state/store.ts";
 import { Button, Card, EngineInput, ErrorBanner } from "../ui/primitives.tsx";
 import Math from "../ui/Math.tsx";
 import { cn } from "../ui/cn.ts";
@@ -46,7 +47,8 @@ export default function GraphScreen() {
   const [tStart, setTStart] = useState("-3");
   const [tEnd, setTEnd] = useState("3");
   const [tStep, setTStep] = useState("1");
-  const dark = document.documentElement.classList.contains("dark");
+  const theme = useAppStore((s) => s.theme);
+  const dark = effectiveTheme(theme) === "dark";
 
   const plot = useMutation({
     mutationFn: async () => {
@@ -137,7 +139,7 @@ export default function GraphScreen() {
                     <tr className="text-left text-slate-500">
                       <th className="px-2 py-1">x</th>
                       {table.data.xs.map((x, i) => (
-                        <th key={x} className="px-2 py-1 font-medium">
+                        <th key={`${x}-${i}`} className="px-2 py-1 font-medium">
                           <Math tex={table.data.xs_latex[i]} fallback={x} />
                         </th>
                       ))}

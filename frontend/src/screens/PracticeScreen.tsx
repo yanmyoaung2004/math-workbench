@@ -33,26 +33,26 @@ export default function PracticeScreen() {
     <div className="flex flex-col gap-4">
       <Card className="p-5">
         <div className="flex flex-wrap gap-4">
-          <label className="text-sm">
-            <span className="mb-1 block text-xs uppercase tracking-wide text-slate-500">Topic</span>
+          <fieldset className="text-sm">
+            <legend className="mb-1 text-xs uppercase tracking-wide text-slate-500">Topic</legend>
             <span className="flex gap-1">
               {TOPICS.map((t) => (
-                <GhostButton key={t} onClick={() => setTopic(t)} className={topic === t ? "bg-accent-600/10 font-semibold" : ""}>
+                <GhostButton key={t} aria-pressed={topic === t} onClick={() => setTopic(t)} className={topic === t ? "bg-accent-600/10 font-semibold" : ""}>
                   {t}
                 </GhostButton>
               ))}
             </span>
-          </label>
-          <label className="text-sm">
-            <span className="mb-1 block text-xs uppercase tracking-wide text-slate-500">Difficulty</span>
+          </fieldset>
+          <fieldset className="text-sm">
+            <legend className="mb-1 text-xs uppercase tracking-wide text-slate-500">Difficulty</legend>
             <span className="flex flex-wrap gap-1">
               {LEVELS.map((d) => (
-                <GhostButton key={d} onClick={() => setDifficulty(d)} className={difficulty === d ? "bg-accent-600/10 font-semibold" : ""}>
+                <GhostButton key={d} aria-pressed={difficulty === d} onClick={() => setDifficulty(d)} className={difficulty === d ? "bg-accent-600/10 font-semibold" : ""}>
                   {d}
                 </GhostButton>
               ))}
             </span>
-          </label>
+          </fieldset>
         </div>
         <Button
           className="mt-4 w-full sm:w-auto"
@@ -95,12 +95,14 @@ export default function PracticeScreen() {
                   )}
                   <span className="flex gap-1 sm:ml-auto">
                     <GhostButton
+                      aria-pressed={marks[i] === true}
                       onClick={() => setMarks((m) => ({ ...m, [i]: true }))}
                       className={marks[i] === true ? "bg-mint-500/15 font-semibold" : ""}
                     >
                       I got it
                     </GhostButton>
                     <GhostButton
+                      aria-pressed={marks[i] === false}
                       onClick={() => setMarks((m) => ({ ...m, [i]: false }))}
                       className={marks[i] === false ? "bg-red-500/15 font-semibold" : ""}
                     >
