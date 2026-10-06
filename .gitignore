@@ -8,6 +8,12 @@ venv/
 .hypothesis/
 htmlcov/
 .coverage*
+# PyInstaller build outputs (recipe committed, binaries reproducible)
+build/
+dist/
+build-pyi-tmp/
+dist-sidecar/
+*.spec
 
 # Node / frontend (future)
 node_modules/
