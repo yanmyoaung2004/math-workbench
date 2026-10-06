@@ -1,7 +1,7 @@
-# Math Engine API Contracts (Phase 0 → 1b binding)
+# Math Engine API Contracts (V1 binding)
 
 Implementations MUST satisfy these shapes. Tests enforce them
-(`tests/unit/test_contracts.py`, golden corpus). Version: `v1b`.
+(`tests/unit/test_contracts.py`, golden corpus). Version: `v1`.
 
 ## 1. JSON sidecar protocol (stdio JSON-lines)
 
@@ -11,12 +11,12 @@ One request line → one response line. UTF-8, `\n`-terminated.
 
 ```jsonc
 {
-  "op": "solve_linear" | "solve_quadratic" | "solve_system" | "solve_inequality" | "simplify" | "expand" | "factorise" | "parse" | "sample_graph" | "analyze_graph" | "table_values" | "solve_intersection",
+  "op": "solve_linear" | "solve_quadratic" | "solve_system" | "solve_inequality" | "simplify" | "expand" | "factorise" | "parse" | "sample_graph" | "analyze_graph" | "table_values" | "solve_intersection" | "history_list" | "history_clear" | "practice_generate" | "practice_score" | "ai_explain" | "ai_hint" | "ai_mistake",
   "input": "2x + 5 = 17",   // raw user string, required (except solve_system)
   "equations": ["2x + y = 7", "x - y = 2"],  // solve_system only: exactly 2
   "domain": "reals",         // optional, default "reals" (GCSE); "complex" opts in
   "method": "auto",          // solve_quadratic only: auto | factorise | formula | complete_square
-  "curriculum": "gcse"       // optional, default "gcse"; gates advanced output
+  "curriculum": "gcse"       // accepted but reserved: V1 is GCSE-only throughout
 }
 ```
 
@@ -68,37 +68,63 @@ v1, failures never break math). `history_list` (`limit`, newest-first) and
         "after": "2*x = 12",
         "rule": "subtraction_property_of_equality",
         "explanation": "Subtract 5 from both sides to remove the constant term.",
-        "verification": "verified"
+        "verification": "verified",
+        "before_latex": "2 x + 5 = 17",   // presentation twins (optional for readers)
+        "after_latex": "2 x = 12",
+        "operand_latex": "5"
       }
     ],
     "verification": "verified",            // verified | unverifiable (never silent)
-    "domain_info": {"domain": "reals", "excluded": []}
+    "domain_info": {"domain": "reals", "excluded": []},
+    "bindings": [{"variable": "x", "exact": "6", "approximate": "6.0", "exact_latex": "6"}],
+    "interpretation_latex": "2 x + 5 = 17",
+    "exact_latex": ["6"]
   }
 }
 ```
+
+Other ops return their own `result` shapes (all carry `ok`/`op`/`interpretation`
+around them): `parse` → `{kind}`; `sample_graph` → `{segments:[{xs,ys}], excluded}`;
+`analyze_graph` → roots/intercept/turning/axis/asymptotes/gradient (+ `*_latex`);
+`table_values` → `{xs, ys, ys_approx, xs_latex, ys_latex}` (`"undefined"` cells);
+`solve_intersection` → `{points:[{kind,x,y,exact,exact_latex}]}`;
+`history_list` → `{entries:[HistoryEntry]}`; `history_clear` → `{cleared}`;
+`practice_generate` → `{questions:[{topic,difficulty,prompt,expected,op,prompt_latex,expected_latex}]}`;
+`practice_score` → `{mastery, recommendation}`;
+`ai_hint` → `{hint, level}`; `ai_explain` → `{explanation, provider}`;
+`ai_mistake` → `{correct} | {correct:false, category, explanation, correction}`.
 
 ### Error response
 
 ```jsonc
 {
   "ok": false, "op": "solve_linear",
-  "error": {"code": "PARSE_ERROR" | "NO_SOLUTION" | "INFINITE_SOLUTIONS" | "UNSOLVABLE" | "DOMAIN_ERROR" | "VALIDATION_ERROR",
+  "error": {"code": "PARSE_ERROR" | "NO_SOLUTION" | "INFINITE_SOLUTIONS" | "UNSOLVABLE" | "VALIDATION_ERROR" | "INTERNAL_ERROR",
             "message": "I couldn't parse '2x + = 17'. Check the expression and try again."}
 }
 ```
 
 Rules: `NO_SOLUTION` (`EmptySet`) vs `INFINITE_SOLUTIONS` (`Reals` identity) are
 distinct codes, not empty arrays. `UNSOLVABLE` (`ConditionSet`/NotImplemented)
-says the engine could not solve — no guessed answer.
+says the engine could not solve — no guessed answer. `INTERNAL_ERROR` is the
+boundary catch-all (student-safe message, traceback to stderr only).
+`DOMAIN_ERROR` is defined in the taxonomy but currently unraised (reserved).
 
 ## 2. Python use-case signatures (application layer)
 
+Application inverts dependencies: use-cases take `(raw input, parser, solver)`
+with SymPy hidden behind ports (`SolverPort.solve_linear/transform/
+check_equality/check_identity/check_system_equality/check_inequality/
+solve_quadratic/solve_system/solve_inequality` returning
+`LinearFacts/TransformFacts/QuadraticFacts/SystemFacts/InequalityFacts`).
+
 ```python
-solve_linear(expr: str, domain: Domain = Domain.REALS) -> Solution
-simplify_expression(expr: str) -> Solution          # single-result, steps=[transform]
-expand_expression(expr: str) -> Solution
-factorise_expression(expr: str) -> Solution
-parse_only(expr: str) -> Expression                 # for FR-IN-2 echo + error UX
+solve_linear(raw, parser, solver, domain=Domain.REALS) -> Solution
+solve_quadratic(raw, parser, solver, domain=Domain.REALS, method="auto") -> Solution
+solve_system(raws: list, parser, solver, domain=Domain.REALS) -> Solution
+solve_inequality(raw, parser, solver, domain=Domain.REALS) -> Solution
+transform_expression(raw, kind, parser, solver) -> Solution  # kind: simplify|expand|factorise
+# parsing: parser.parse(raw) -> Expression directly (no parse_only use-case)
 ```
 
 All take/return domain DTOs (`domain/models.py`), never SymPy objects.
@@ -109,7 +135,7 @@ All take/return domain DTOs (`domain/models.py`), never SymPy objects.
 @dataclass(frozen=True) class Expression:
     raw: str            # user input verbatim
     canonical: str      # sstr of parsed SymPy, e.g. "2*x + 5"
-    kind: Literal["expression", "equation"]
+    kind: Literal["expression", "equation", "inequality"]
 
 @dataclass(frozen=True) class Step:
     operation: str      # e.g. subtract_both_sides, divide_both_sides
@@ -119,6 +145,15 @@ All take/return domain DTOs (`domain/models.py`), never SymPy objects.
     rule: str           # e.g. subtraction_property_of_equality
     explanation: str    # GCSE wording, no advanced terms by default
     verification: Literal["verified", "unverifiable"]
+    before_latex: str = ""   # presentation twins (optional for readers)
+    after_latex: str = ""
+    operand_latex: str = ""
+
+@dataclass(frozen=True) class Binding:
+    variable: str       # e.g. x
+    exact: str
+    approximate: str
+    exact_latex: str = ""
 
 @dataclass(frozen=True) class Solution:
     interpretation: str
@@ -127,6 +162,9 @@ All take/return domain DTOs (`domain/models.py`), never SymPy objects.
     steps: tuple[Step, ...]
     verification: Literal["verified", "unverifiable"]
     domain_info: DomainInfo
+    bindings: tuple[Binding, ...] = ()
+    interpretation_latex: str = ""
+    exact_latex: tuple[str, ...] = ()
 ```
 
 ## 4. Port interfaces
@@ -137,15 +175,23 @@ class ParserPort(abc.ABC):
     def parse(self, raw: str) -> Expression: ...
 
 class SolverPort(abc.ABC):
-    @abc.abstractmethod
-    def solve_linear(self, expr: Expression, domain: Domain) -> SolverResult: ...
-    # SolverResult = raw exact SymPy-strings + steps data + set_tag
-    # (EmptySet | FiniteSet | Reals-identity | ConditionSet-unsolvable)
+    def solve_linear(self, expr, domain=Domain.REALS) -> LinearFacts: ...
+    def solve_quadratic(self, expr, domain=Domain.REALS, method="auto") -> QuadraticFacts: ...
+    def solve_system(self, exprs, domain=Domain.REALS) -> SystemFacts: ...
+    def solve_inequality(self, expr, domain=Domain.REALS) -> InequalityFacts: ...
+    def transform(self, expr, kind) -> TransformFacts: ...  # simplify|expand|factorise
+    def check_equality(self, lhs, rhs, symbol, candidate) -> bool: ...
+    def check_identity(self, before, after) -> bool: ...
+    def check_system_equality(self, equations, bindings) -> bool: ...
+    def check_inequality(self, lhs, rhs, rel, symbol, candidate) -> bool: ...
+    # Facts = plain-data carriers (interpretation, solutions, set_tag, chain);
+    # set_tag mirrors the solveset Set (finite | empty | infinite | condition).
 ```
 
-Verification lives in `domain/verify.py` as a pure function
-(`check_solution(equation, candidate) -> bool` via `simplify(lhs-rhs)==0`),
-called by application — not hidden inside the SymPy adapter (so the check is independent).
+Verification lives in `domain/verify.py` as pure string-level checks
+(`solution_holds`, `system_holds`, `solution_self_consistent`) with the symbolic
+equality injected from the adapter (`simplify(lhs-rhs)==0` semantics) — the
+check stays independent of the solver that produced the candidate.
 
 ## 5. Step vocabulary (V1b: linear + quadratic)
 
@@ -169,8 +215,9 @@ called by application — not hidden inside the SymPy adapter (so the check is i
 | `eliminate_variable` | `elimination_method` | `add/subtract to kill y` |
 | `substitute_back` | `substitution_method` | `x=3 into x-y=2` |
 | `flip_inequality_sign` | `inequality_sign_reversal` | `-2x>6 → 2x<-6` |
-
-Inequality sign-flip (`…reverse the inequality…`) lands with A3.
+| `simplify_expression` | `simplification` | `2x+3x → 5x` |
+| `expand_expression` | `expansion` | `(x+1)² → x²+2x+1` |
+| `factorise_expression` | `factorisation` | `x²+2x+1 → (x+1)²` |
 
 ## 6. Compatibility promise
 
