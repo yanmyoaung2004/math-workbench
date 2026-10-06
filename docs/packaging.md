@@ -25,16 +25,32 @@ Node 24 + npm registry.
 
 ```powershell
 cd frontend
-npm install
-npm run build          # tsc strict + vite dist (Tauri frontendDist)
+npm install                 # includes @tauri-apps/cli (devDep)
+npm run build               # tsc strict + vite dist (Tauri frontendDist)
 cd ../src-tauri
-cargo tauri build      # needs @tauri-apps/cli; NSIS/WiX for installers
+# MSVC env first (link.exe is not on PATH by default):
+cmd /c '"C:\Program Files (x86)\...\VsDevCmd.bat" -arch=amd64 -host_arch=amd64 >nul && cargo build --release'
 ```
+
+Verified 2026-10-06: `math-workbench.exe` (11.8 MB) links clean; co-located
+with the triple-named sidecar it launches, responds, and shows its window
+(process alive + responding + titled, then closed). Capabilities load —
+a malformed `capabilities/default.json` would fail this smoke test.
 
 `tauri.conf.json` declares `externalBin: ["binaries/workbench-engine"]` — the
 CLI bundles `src-tauri/binaries/workbench-engine-<triple>.exe` automatically.
 Capabilities (`capabilities/default.json`) scope `shell:allow-spawn`,
 `shell:allow-stdin-write`, and `shell:allow-kill` to that sidecar only.
+
+### Not yet done (explicit gap)
+
+- Installer bundles: neither NSIS (`makensis`) nor WiX (`candle`) is installed,
+  so `tauri build` cannot produce `.nsis`/`.msi` here. Install one of them and
+  rerun `npx tauri build` from `frontend/` for shippable installers.
+- In-app sidecar spawn (frontend `Command.sidecar` → engine answers inside the
+  window) is proven at `tauri dev`/bundle time, not by the launch smoke test.
+  Run `npx tauri dev`, solve `2x + 5 = 17` in the Solver screen, and confirm
+  `x = 6` with steps before release.
 
 ## Offline guarantees
 
