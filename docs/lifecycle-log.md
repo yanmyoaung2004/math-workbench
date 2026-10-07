@@ -146,3 +146,22 @@ Fixes, one commit per task (all suites re-greened):
 
 Final gates: engine **164 passed, 1 skipped**; frontend tsc strict clean,
 vitest **10 passed**, `vite build` green. **Tag `v1-mvp-verified`.**
+
+---
+
+## 2026-10-07 — Feature research implementation (report: `yma/`, private)
+
+Implemented the research report's M1–M3 recommendations, one commit per task:
+
+| Commit | Task | Evidence |
+|--------|------|----------|
+| `cf11c39` | M1: mastery gates (80% unlocks), `ai_reflect` gate, mixed sets | mastery + e2e tests |
+| `b498f66` | Practice store: attempts, SM-2 reviews, assignments; dashboard/streak ops | store integration + e2e |
+| `6e5348e` | Worksheets (verified export), 12 spec codes, per-rule concept notes, live-proved examples, glossary | rule-coverage test |
+| `bd860a4` | OCR seam: refusing stub, capped base64, `ocr_parse` op | stub honesty tests |
+| `e2845f9` | Progress + Reference screens; exam timer, attempt recording, worksheet builder, mistake panel with reflection gate, concept notes, markdown copy, image import, graph sliders | vitest 13 passed |
+
+Final gates after rebuild: engine **187 passed, 1 skipped**; frontend tsc strict
+clean, vitest **13 passed**, `vite build` green; sidecar rebuilt and re-smoked
+(worksheet, concept, glossary, reflect ops); desktop exe relinked, app
+relaunched and responding. `yma/` research folder gitignored (private).

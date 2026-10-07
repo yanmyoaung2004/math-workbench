@@ -26,9 +26,13 @@ history) lives in TanStack Query mutations/queries keyed per screen.
 ## Screens
 
 Solver (7 modes: linear/quadratic/inequality/system/simplify/expand/factorise,
-interpretation echo, steps, L1–L5 hints), Graph (Plotly + analysis +
-Fraction-exact table), Practice (generate/reveal/self-mark/score),
-History (list/clear), Settings (theme, engine).
+interpretation echo, steps with why-notes, L1–L5 hints, mistake panel with
+reflection gate, markdown copy, image import), Graph (Plotly + analysis +
+Fraction-exact table + parameter sliders), Practice (generate/reveal/self-mark/
+score with attempt recording, exam timer mode, worksheet builder),
+Progress (mastery, unlocks, mistake patterns, review queue, streaks,
+assignments), Reference (glossary, spec points, verified examples, spec
+worksheets), History (list/clear), Settings (theme, engine, connection test).
 
 Math rendering: `src/ui/Math.tsx` typesets the backend `*_latex` fields with
 KaTeX (fonts bundled, offline-safe) and falls back to the plain canonical
