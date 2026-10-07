@@ -82,6 +82,29 @@ def test_practice_ops_round_trip():
     assert scored["result"]["mastery"] == {"linear": 50.0}
 
 
+def test_practice_store_ops_round_trip():
+    recorded, dashboard, due, streak, created, listed = run_requests([
+        {"op": "practice_record", "topic": "linear", "difficulty": "basic",
+         "correct": True, "hints_used": 0},
+        {"op": "practice_dashboard"},
+        {"op": "review_answer", "prompt": "2x + 5 = 17", "topic": "linear",
+         "correct": True, "hints_used": 0, "today": "2026-10-07"},
+        {"op": "progress_streak"},
+        {"op": "assignment_create", "title": "Friday set", "topic": "linear",
+         "difficulty": "basic", "n": 5, "seed": 11},
+        {"op": "assignment_list"},
+    ])
+    assert recorded["result"]["recorded"] == 1
+    assert dashboard["result"]["mastery"] == {"linear": 100.0}
+    assert dashboard["result"]["attempts"] == 1
+    assert due["result"]["next_due"] == "2026-10-08"
+    assert streak["result"]["streak_days"] >= 0
+    assert created["result"]["created"] == 1
+    assert listed["result"]["assignments"][0]["title"] == "Friday set"
+    pending = run_requests([{"op": "review_due", "today": "2026-10-08"}])[0]
+    assert len(pending["result"]["due"]) == 1
+
+
 def test_ai_ops_round_trip():
     solved = run_requests([{"op": "solve_linear", "input": "2x + 5 = 17"}])[0]
     solution = solved["result"]

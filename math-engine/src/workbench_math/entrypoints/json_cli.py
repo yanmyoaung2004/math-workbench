@@ -9,12 +9,14 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import date
 import sys
 import traceback
 from dataclasses import asdict
 from pathlib import Path
 
 from ..adapters.sqlite_history import SqliteHistory
+from ..adapters.sqlite_practice import SqlitePractice
 from ..adapters.latexing import (
     latex_analysis,
     latex_of,
@@ -42,6 +44,7 @@ from ..ai.openai_compat import OpenAICompatibleProvider
 from ..ai.provider import StubProvider
 from ..ai.tutor import TutorService
 from ..practice.generator import DIFFICULTIES, TOPICS, generate_questions
+from ..practice.reviews import next_review, quality_for, streak_days
 from ..practice.mastery import (
     Attempt,
     recommend,
@@ -53,11 +56,17 @@ _OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
         "simplify", "expand", "factorise", "parse",
         "sample_graph", "analyze_graph", "table_values", "solve_intersection",
         "history_list", "history_clear", "practice_generate", "practice_score",
-        "ai_explain", "ai_hint", "ai_mistake", "ai_reflect"}
+        "ai_explain", "ai_hint", "ai_mistake", "ai_reflect",
+        "practice_record", "practice_dashboard", "review_due", "review_answer",
+        "progress_streak", "assignment_create", "assignment_list"}
 
 # Ops whose verified results are recorded in local history (calculation log).
 _SAVED_OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
               "simplify", "expand", "factorise"}
+
+
+def _today() -> str:
+    return date.today().isoformat()
 
 
 def data_dir() -> Path:
@@ -119,7 +128,10 @@ def handle(request: dict) -> dict:
     raw = request.get("input", "")
     if op not in ("solve_system", "solve_intersection", "history_list",
                   "history_clear", "practice_generate", "practice_score",
-                  "ai_explain", "ai_hint", "ai_mistake", "ai_reflect") and (
+                  "ai_explain", "ai_hint", "ai_mistake", "ai_reflect",
+                  "practice_record", "practice_dashboard", "review_due",
+                  "review_answer", "progress_streak", "assignment_create",
+                  "assignment_list") and (
         not isinstance(raw, str) or not raw.strip()
     ):
         return _error_response(op, ValidationError.code, "Please enter a mathematical expression or equation.")
@@ -199,6 +211,94 @@ def handle(request: dict) -> dict:
             store = SqliteHistory(data_dir() / "history.db")
             return {"ok": True, "op": op, "interpretation": "",
                     "result": {"cleared": store.clear()}}
+        practice = SqlitePractice(data_dir() / "practice.db")
+        if op == "practice_record":
+            topic = str(request.get("topic", ""))
+            difficulty = str(request.get("difficulty", ""))
+            if topic not in TOPICS or difficulty not in DIFFICULTIES:
+                return _error_response(op, ValidationError.code, "Unknown topic or difficulty.")
+            try:
+                hints = int(request.get("hints_used", 0))
+            except (TypeError, ValueError):
+                return _error_response(op, ValidationError.code, "hints_used must be an integer.")
+            row = practice.record_attempt(
+                topic, difficulty, bool(request.get("correct", False)), hints,
+                str(request.get("mistake", "")))
+            return {"ok": True, "op": op, "interpretation": "",
+                    "result": {"recorded": row}}
+        if op == "practice_dashboard":
+            attempts = practice.recent_attempts()
+            scored = tuple(
+                Attempt(topic=a.topic, correct=a.correct, hints_used=a.hints_used,
+                        difficulty=a.difficulty) for a in attempts)
+            mastery = topic_mastery(scored)
+            by_mistake: dict[str, int] = {}
+            for a in attempts:
+                if a.mistake:
+                    by_mistake[a.mistake] = by_mistake.get(a.mistake, 0) + 1
+            return {"ok": True, "op": op, "interpretation": "",
+                    "result": {"mastery": mastery,
+                               "recommendation": recommend(mastery),
+                               "unlocked": {t: unlocked_difficulties(t, scored)
+                                            for t in sorted({a.topic for a in scored})},
+                               "by_mistake": by_mistake,
+                               "attempts": len(attempts)}}
+        if op == "review_due":
+            today = str(request.get("today", ""))
+            if not today:
+                today = _today()
+            try:
+                limit = int(request.get("limit", 20))
+            except (TypeError, ValueError):
+                return _error_response(op, ValidationError.code, "limit must be an integer.")
+            return {"ok": True, "op": op, "interpretation": "",
+                    "result": {"due": [asdict(r) for r in practice.due_reviews(today, limit)]}}
+        if op == "review_answer":
+            prompt = str(request.get("prompt", ""))
+            topic = str(request.get("topic", ""))
+            if not prompt or topic not in TOPICS:
+                return _error_response(op, ValidationError.code, "Send prompt and a known topic.")
+            try:
+                hints = int(request.get("hints_used", 0))
+                ease = float(request.get("ease", 2.5))
+                interval = int(request.get("interval_days", 0))
+            except (TypeError, ValueError):
+                return _error_response(op, ValidationError.code, "hints_used, ease and interval_days must be numbers.")
+            today = str(request.get("today", ""))
+            if not today:
+                today = _today()
+            quality = quality_for(bool(request.get("correct", False)), hints)
+            due, new_interval, new_ease = next_review(ease, interval, quality, today)
+            practice.upsert_review(prompt, topic, due, new_interval, new_ease)
+            return {"ok": True, "op": op, "interpretation": "",
+                    "result": {"next_due": due, "interval_days": new_interval, "ease": new_ease}}
+        if op == "progress_streak":
+            dates = tuple(a.timestamp for a in practice.recent_attempts(1000))
+            today = str(request.get("today", ""))
+            if not today:
+                today = _today()
+            streak, active = streak_days(dates, today)
+            return {"ok": True, "op": op, "interpretation": "",
+                    "result": {"streak_days": streak, "active_today": active}}
+        if op == "assignment_create":
+            title = str(request.get("title", "")).strip()
+            topic = str(request.get("topic", ""))
+            difficulty = str(request.get("difficulty", ""))
+            if not title or topic not in TOPICS or difficulty not in DIFFICULTIES:
+                return _error_response(op, ValidationError.code, "Send title and known topic/difficulty.")
+            try:
+                n = int(request.get("n", 5))
+                seed = int(request.get("seed", 0))
+            except (TypeError, ValueError):
+                return _error_response(op, ValidationError.code, "n and seed must be integers.")
+            if not 1 <= n <= 50:
+                return _error_response(op, ValidationError.code, "Ask for 1–50 questions.")
+            row = practice.create_assignment(title, topic, difficulty, n, seed)
+            return {"ok": True, "op": op, "interpretation": "",
+                    "result": {"created": row}}
+        if op == "assignment_list":
+            return {"ok": True, "op": op, "interpretation": "",
+                    "result": {"assignments": [asdict(a) for a in practice.list_assignments()]}}
         if op == "practice_generate":
             topic = request.get("topic", "")
             difficulty = request.get("difficulty", "")
