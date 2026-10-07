@@ -43,8 +43,13 @@ from ..ai.mistakes import classify as classify_mistake
 from ..ai.openai_compat import OpenAICompatibleProvider
 from ..ai.provider import StubProvider
 from ..ai.tutor import TutorService
+from ..practice.concepts import concept_for
+from ..practice.examples import examples_for
 from ..practice.generator import DIFFICULTIES, TOPICS, generate_questions
+from ..practice.glossary import GLOSSARY
 from ..practice.reviews import next_review, quality_for, streak_days
+from ..practice.specmap import SPEC_POINTS, resolve_spec
+from ..practice.worksheet import build_worksheet
 from ..practice.mastery import (
     Attempt,
     recommend,
@@ -58,7 +63,9 @@ _OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
         "history_list", "history_clear", "practice_generate", "practice_score",
         "ai_explain", "ai_hint", "ai_mistake", "ai_reflect",
         "practice_record", "practice_dashboard", "review_due", "review_answer",
-        "progress_streak", "assignment_create", "assignment_list"}
+        "progress_streak", "assignment_create", "assignment_list",
+        "worksheet_generate", "spec_map", "concept_note", "practice_examples",
+        "glossary_list", "glossary_get"}
 
 # Ops whose verified results are recorded in local history (calculation log).
 _SAVED_OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
@@ -131,7 +138,9 @@ def handle(request: dict) -> dict:
                   "ai_explain", "ai_hint", "ai_mistake", "ai_reflect",
                   "practice_record", "practice_dashboard", "review_due",
                   "review_answer", "progress_streak", "assignment_create",
-                  "assignment_list") and (
+                  "assignment_list", "worksheet_generate", "spec_map",
+                  "concept_note", "practice_examples", "glossary_list",
+                  "glossary_get") and (
         not isinstance(raw, str) or not raw.strip()
     ):
         return _error_response(op, ValidationError.code, "Please enter a mathematical expression or equation.")
@@ -299,6 +308,73 @@ def handle(request: dict) -> dict:
         if op == "assignment_list":
             return {"ok": True, "op": op, "interpretation": "",
                     "result": {"assignments": [asdict(a) for a in practice.list_assignments()]}}
+        if op == "worksheet_generate":
+            topic = str(request.get("topic", ""))
+            difficulty = str(request.get("difficulty", ""))
+            spec = str(request.get("spec", "")).strip()
+            if spec:
+                try:
+                    topic, difficulty, _label = resolve_spec(spec)
+                except KeyError:
+                    return _error_response(op, ValidationError.code, f"Unknown spec code {spec!r}.")
+            if topic not in TOPICS or difficulty not in DIFFICULTIES:
+                return _error_response(op, ValidationError.code, "Send known topic/difficulty or a spec code.")
+            try:
+                n = int(request.get("n", 10))
+                seed = int(request.get("seed", 0))
+            except (TypeError, ValueError):
+                return _error_response(op, ValidationError.code, "n and seed must be integers.")
+            if not 1 <= n <= 50:
+                return _error_response(op, ValidationError.code, "Ask for 1–50 questions.")
+            sheet = build_worksheet(
+                topic, difficulty, n, seed, bool(request.get("with_answers", True)),
+                str(request.get("title", "")), parser, solver)
+            return {"ok": True, "op": op, "interpretation": "",
+                    "result": {"title": sheet.title, "topic": sheet.topic,
+                               "difficulty": sheet.difficulty, "seed": sheet.seed,
+                               "prompts": list(sheet.prompts),
+                               "answer_key": [list(a) for a in sheet.answer_key]}}
+        if op == "spec_map":
+            return {"ok": True, "op": op, "interpretation": "",
+                    "result": {"spec_points": [
+                        {"code": code, **entry} for code, entry in SPEC_POINTS.items()]}}
+        if op == "concept_note":
+            rule = str(request.get("rule", ""))
+            try:
+                note = concept_for(rule)
+            except KeyError:
+                return _error_response(op, ValidationError.code, f"No concept note for rule {rule!r}.")
+            return {"ok": True, "op": op, "interpretation": "",
+                    "result": {"rule": rule, "note": note}}
+        if op == "practice_examples":
+            topic = str(request.get("topic", "all"))
+            solved = []
+            for t, prompt, op_name in examples_for(topic):
+                if op_name == "solve_linear":
+                    sol = solve_linear(prompt, parser, solver, Domain.REALS)
+                elif op_name == "solve_quadratic":
+                    sol = solve_quadratic(prompt, parser, solver, Domain.REALS)
+                elif op_name == "solve_inequality":
+                    sol = solve_inequality(prompt, parser, solver, Domain.REALS)
+                else:
+                    sol = transform_expression(prompt, op_name, parser, solver)
+                if sol.verification != "verified":
+                    return _error_response(op, "INTERNAL_ERROR", f"Example failed verification: {prompt!r}.")
+                solved.append({"topic": t, "prompt": prompt,
+                               "exact": list(sol.exact),
+                               "prompt_latex": latex_of(prompt),
+                               "exact_latex": [latex_of(e) for e in sol.exact]})
+            return {"ok": True, "op": op, "interpretation": "",
+                    "result": {"examples": solved}}
+        if op == "glossary_list":
+            return {"ok": True, "op": op, "interpretation": "",
+                    "result": {"terms": sorted(GLOSSARY)}}
+        if op == "glossary_get":
+            term = str(request.get("term", "")).strip().lower()
+            if term not in GLOSSARY:
+                return _error_response(op, ValidationError.code, f"No glossary entry for {term!r}.")
+            return {"ok": True, "op": op, "interpretation": "",
+                    "result": {"term": term, "definition": GLOSSARY[term]}}
         if op == "practice_generate":
             topic = request.get("topic", "")
             difficulty = request.get("difficulty", "")

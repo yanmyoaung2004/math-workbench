@@ -105,6 +105,25 @@ def test_practice_store_ops_round_trip():
     assert len(pending["result"]["due"]) == 1
 
 
+def test_content_ops_round_trip():
+    sheet, spec, note, examples, terms, term = run_requests([
+        {"op": "worksheet_generate", "topic": "linear", "difficulty": "basic",
+         "n": 3, "seed": 4, "with_answers": True, "title": "T"},
+        {"op": "spec_map"},
+        {"op": "concept_note", "rule": "discriminant"},
+        {"op": "practice_examples", "topic": "quadratic"},
+        {"op": "glossary_list"},
+        {"op": "glossary_get", "term": "surd"},
+    ])
+    assert len(sheet["result"]["prompts"]) == 3
+    assert len(sheet["result"]["answer_key"]) == 3
+    assert any(p["code"] == "ALG-QUAD-3" for p in spec["result"]["spec_points"])
+    assert "roots" in note["result"]["note"]
+    assert all(e["exact"] for e in examples["result"]["examples"])
+    assert "discriminant" in terms["result"]["terms"]
+    assert "unevaluated" in term["result"]["definition"]
+
+
 def test_ai_ops_round_trip():
     solved = run_requests([{"op": "solve_linear", "input": "2x + 5 = 17"}])[0]
     solution = solved["result"]

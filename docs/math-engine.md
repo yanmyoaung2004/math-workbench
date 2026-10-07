@@ -11,7 +11,7 @@ One request line → one response line. UTF-8, `\n`-terminated.
 
 ```jsonc
 {
-  "op": "solve_linear" | "solve_quadratic" | "solve_system" | "solve_inequality" | "simplify" | "expand" | "factorise" | "parse" | "sample_graph" | "analyze_graph" | "table_values" | "solve_intersection" | "history_list" | "history_clear" | "practice_generate" | "practice_score" | "ai_explain" | "ai_hint" | "ai_mistake" | "ai_reflect",
+  "op": "solve_linear" | "solve_quadratic" | "solve_system" | "solve_inequality" | "simplify" | "expand" | "factorise" | "parse" | "sample_graph" | "analyze_graph" | "table_values" | "solve_intersection" | "history_list" | "history_clear" | "practice_generate" | "practice_score" | "ai_explain" | "ai_hint" | "ai_mistake" | "ai_reflect" | "practice_record" | "practice_dashboard" | "review_due" | "review_answer" | "progress_streak" | "assignment_create" | "assignment_list" | "worksheet_generate" | "spec_map" | "concept_note" | "practice_examples" | "glossary_list" | "glossary_get",
   "input": "2x + 5 = 17",   // raw user string, required (except solve_system)
   "equations": ["2x + y = 7", "x - y = 2"],  // solve_system only: exactly 2
   "domain": "reals",         // optional, default "reals" (GCSE); "complex" opts in
@@ -95,6 +95,13 @@ around them): `parse` → `{kind}`; `sample_graph` → `{segments:[{xs,ys}], exc
 `ai_mistake` → `{correct} | {correct:false, category, explanation, correction}`;
 `ai_reflect` (adds `reflection` sentence; short reflections rejected) →
 `{accepted, ...mistake}`.
+Content ops: `worksheet_generate` (`topic`/`difficulty` or `spec` code, `n`,
+`seed`, `with_answers`, `title` → verified prompts + answer key),
+`spec_map` (curriculum codes), `concept_note` (`rule` → why-note),
+`practice_examples` (engine-proved worked examples), `glossary_list/get`.
+Persistence ops: `practice_record`, `practice_dashboard` (mastery + unlocks +
+mistake breakdown), `review_due`/`review_answer` (SM-2 schedule),
+`progress_streak`, `assignment_create/list`.
 
 ### Error response
 
