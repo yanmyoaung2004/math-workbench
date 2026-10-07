@@ -19,7 +19,7 @@ from ..domain.models import Domain
 from ..ports.parser_port import ParserPort
 from ..ports.solver_port import SolverPort
 
-TOPICS = ("linear", "quadratic")
+TOPICS = ("linear", "quadratic", "mixed")
 DIFFICULTIES = ("beginner", "basic", "intermediate", "advanced", "exam")
 
 
@@ -109,7 +109,8 @@ def generate_questions(topic: str, difficulty: str, n: int, seed: int,
     rng = random.Random(seed)
     out: list[Question] = []
     for _ in range(n):
-        if topic == "linear":
+        actual = rng.choice(["linear", "quadratic"]) if topic == "mixed" else topic
+        if actual == "linear":
             prompt = _linear_prompt(rng, difficulty)
             sol = solve_linear(prompt, parser, solver, Domain.REALS)
             op = "solve_linear"
@@ -121,6 +122,6 @@ def generate_questions(topic: str, difficulty: str, n: int, seed: int,
             raise ValidationError(
                 f"Generated an unverifiable question ({prompt!r}) — this is an "
                 "engine bug, please report it.")
-        out.append(Question(topic=topic, difficulty=difficulty, prompt=prompt,
+        out.append(Question(topic=actual, difficulty=difficulty, prompt=prompt,
                             expected=sol.exact, op=op))
     return tuple(out)

@@ -11,7 +11,7 @@ One request line → one response line. UTF-8, `\n`-terminated.
 
 ```jsonc
 {
-  "op": "solve_linear" | "solve_quadratic" | "solve_system" | "solve_inequality" | "simplify" | "expand" | "factorise" | "parse" | "sample_graph" | "analyze_graph" | "table_values" | "solve_intersection" | "history_list" | "history_clear" | "practice_generate" | "practice_score" | "ai_explain" | "ai_hint" | "ai_mistake",
+  "op": "solve_linear" | "solve_quadratic" | "solve_system" | "solve_inequality" | "simplify" | "expand" | "factorise" | "parse" | "sample_graph" | "analyze_graph" | "table_values" | "solve_intersection" | "history_list" | "history_clear" | "practice_generate" | "practice_score" | "ai_explain" | "ai_hint" | "ai_mistake" | "ai_reflect",
   "input": "2x + 5 = 17",   // raw user string, required (except solve_system)
   "equations": ["2x + y = 7", "x - y = 2"],  // solve_system only: exactly 2
   "domain": "reals",         // optional, default "reals" (GCSE); "complex" opts in
@@ -35,10 +35,10 @@ asymptotes, gradient — all engine cross-checked), `table_values`
 (Fraction-exact `start/end/step` strings; `"undefined"` cells), and
 `solve_intersection` (`inputs: [f, g]` → verified points; `[]` when parallel).
 
-Practice (deterministic, offline): `practice_generate` (`topic`, `difficulty`,
-`n ≤ 50`, `seed` → engine-verified numeric questions; same seed = same paper)
-and `practice_score` (`attempts` → per-topic mastery % with hint penalty +
-weakest-topic recommendation; transparent, no ML).
+Practice (deterministic, offline): `practice_generate` (`topic` incl. `mixed`,
+`difficulty`, `n ≤ 50`, `seed` → engine-verified numeric questions; same seed = same paper)
+and `practice_score` (`attempts` with optional `difficulty` → per-topic mastery % with hint penalty,
+`unlocked` difficulty gates per topic, weakest-topic recommendation; transparent, no ML).
 
 Presentation LaTeX: every math string ships a `*_latex` twin rendered by SymPy
 (`2*x**2` → `2 x^{2}`, `1/2` → `\frac{1}{2}`), structure-preserving so operand
@@ -92,7 +92,9 @@ around them): `parse` → `{kind}`; `sample_graph` → `{segments:[{xs,ys}], exc
 `practice_generate` → `{questions:[{topic,difficulty,prompt,expected,op,prompt_latex,expected_latex}]}`;
 `practice_score` → `{mastery, recommendation}`;
 `ai_hint` → `{hint, level}`; `ai_explain` → `{explanation, provider}`;
-`ai_mistake` → `{correct} | {correct:false, category, explanation, correction}`.
+`ai_mistake` → `{correct} | {correct:false, category, explanation, correction}`;
+`ai_reflect` (adds `reflection` sentence; short reflections rejected) →
+`{accepted, ...mistake}`.
 
 ### Error response
 

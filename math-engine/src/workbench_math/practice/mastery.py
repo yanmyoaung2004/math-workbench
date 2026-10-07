@@ -15,6 +15,11 @@ class Attempt:
     topic: str
     correct: bool
     hints_used: int = 0
+    difficulty: str = ""
+
+
+DIFFICULTY_ORDER = ("beginner", "basic", "intermediate", "advanced", "exam")
+UNLOCK_THRESHOLD = 80.0
 
 
 def attempt_score(attempt: Attempt) -> float:
@@ -43,3 +48,32 @@ def recommend(mastery: dict[str, float]) -> str:
         return "Balanced across topics — try exam-style questions."
     _, topic = min(weak)
     return f"Recommended practice: {topic} ({mastery[topic]}% mastery)."
+
+
+def _mastery_by_topic_difficulty(attempts: tuple[Attempt, ...]) -> dict[tuple[str, str], float]:
+    groups: dict[tuple[str, str], list[float]] = {}
+    for attempt in attempts:
+        if attempt.difficulty:
+            groups.setdefault((attempt.topic, attempt.difficulty), []).append(
+                attempt_score(attempt))
+    return {k: round(sum(v) / len(v) * 100, 1) for k, v in groups.items()}
+
+
+def unlocked_difficulties(topic: str, attempts: tuple[Attempt, ...],
+                          threshold: float = UNLOCK_THRESHOLD) -> list[str]:
+    """Mastery-gated progression: each level unlocks at >= threshold on all easier ones.
+
+    Beginner is always open; untried easier levels count as passed (don't trap
+    new students), but once attempted they must reach threshold.
+    """
+    by_level = _mastery_by_topic_difficulty(tuple(a for a in attempts if a.topic == topic))
+    if not by_level:
+        return [DIFFICULTY_ORDER[0]]  # fresh start (or untagged legacy data)
+    open_levels = [DIFFICULTY_ORDER[0]]
+    for level in DIFFICULTY_ORDER[1:]:
+        prev = DIFFICULTY_ORDER[:DIFFICULTY_ORDER.index(level)]
+        if all(by_level.get((topic, p), 100.0) >= threshold for p in prev):
+            open_levels.append(level)
+        else:
+            break
+    return open_levels

@@ -107,6 +107,35 @@ def test_ai_ops_round_trip():
     assert judged2["result"]["category"] == "bracket_distribution"
 
 
+def test_reflect_gate_and_mixed_sets():
+    reflected = run_requests([
+        {"op": "ai_reflect", "expected_step": {
+            "operation": "distribute", "operand": "2*(x + 3)",
+            "before": "2*(x + 3) = 14", "after": "2*x + 6 = 14",
+            "rule": "distributive_property", "explanation": "Expand.",
+            "verification": "verified"},
+         "student_after": "2*x + 3 = 14", "reflection": "short"},
+    ])[0]
+    assert reflected["ok"] is False  # reflection too short — gate holds
+    ok = run_requests([
+        {"op": "ai_reflect", "expected_step": {
+            "operation": "distribute", "operand": "2*(x + 3)",
+            "before": "2*(x + 3) = 14", "after": "2*x + 6 = 14",
+            "rule": "distributive_property", "explanation": "Expand.",
+            "verification": "verified"},
+         "student_after": "2*x + 3 = 14",
+         "reflection": "I only multiplied the first term inside the bracket."},
+    ])[0]
+    assert ok["result"]["accepted"] is True
+    assert ok["result"]["category"] == "bracket_distribution"
+    mixed = run_requests([
+        {"op": "practice_generate", "topic": "mixed", "difficulty": "basic",
+         "n": 6, "seed": 3},
+    ])[0]
+    topics = {q["topic"] for q in mixed["result"]["questions"]}
+    assert topics == {"linear", "quadratic"}
+
+
 def test_history_auto_save_and_list(tmp_path):
     import os
 

@@ -42,13 +42,18 @@ from ..ai.openai_compat import OpenAICompatibleProvider
 from ..ai.provider import StubProvider
 from ..ai.tutor import TutorService
 from ..practice.generator import DIFFICULTIES, TOPICS, generate_questions
-from ..practice.mastery import Attempt, recommend, topic_mastery
+from ..practice.mastery import (
+    Attempt,
+    recommend,
+    topic_mastery,
+    unlocked_difficulties,
+)
 
 _OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
         "simplify", "expand", "factorise", "parse",
         "sample_graph", "analyze_graph", "table_values", "solve_intersection",
         "history_list", "history_clear", "practice_generate", "practice_score",
-        "ai_explain", "ai_hint", "ai_mistake"}
+        "ai_explain", "ai_hint", "ai_mistake", "ai_reflect"}
 
 # Ops whose verified results are recorded in local history (calculation log).
 _SAVED_OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
@@ -114,7 +119,7 @@ def handle(request: dict) -> dict:
     raw = request.get("input", "")
     if op not in ("solve_system", "solve_intersection", "history_list",
                   "history_clear", "practice_generate", "practice_score",
-                  "ai_explain", "ai_hint", "ai_mistake") and (
+                  "ai_explain", "ai_hint", "ai_mistake", "ai_reflect") and (
         not isinstance(raw, str) or not raw.strip()
     ):
         return _error_response(op, ValidationError.code, "Please enter a mathematical expression or equation.")
@@ -221,14 +226,17 @@ def handle(request: dict) -> dict:
             try:
                 attempts = tuple(
                     Attempt(topic=str(a["topic"]), correct=bool(a["correct"]),
-                            hints_used=int(a.get("hints_used", 0)))
+                            hints_used=int(a.get("hints_used", 0)),
+                            difficulty=str(a.get("difficulty", "")))
                     for a in raw_attempts
                 )
             except (KeyError, TypeError, ValueError, AttributeError):
                 return _error_response(op, ValidationError.code, "Each attempt needs topic, correct, hints_used.")
             mastery = topic_mastery(attempts)
             return {"ok": True, "op": op, "interpretation": "",
-                    "result": {"mastery": mastery, "recommendation": recommend(mastery)}}
+                    "result": {"mastery": mastery, "recommendation": recommend(mastery),
+                               "unlocked": {t: unlocked_difficulties(t, attempts)
+                                            for t in sorted({a.topic for a in attempts})}}}
         if op in ("ai_explain", "ai_hint"):
             payload = request.get("solution", {})
             if not isinstance(payload, dict):
@@ -268,6 +276,29 @@ def handle(request: dict) -> dict:
                         "result": {"correct": True}}
             return {"ok": True, "op": op, "interpretation": expected.after,
                     "result": {"correct": False, "category": mistake.category,
+                               "explanation": mistake.explanation,
+                               "correction": mistake.correction}}
+        if op == "ai_reflect":
+            payload = request.get("expected_step", {})
+            student_after = request.get("student_after", "")
+            reflection = request.get("reflection", "")
+            if not isinstance(payload, dict) or not isinstance(student_after, str):
+                return _error_response(op, ValidationError.code, "Send expected_step object and student_after string.")
+            if not isinstance(reflection, str) or len(reflection.strip()) < 10:
+                return _error_response(
+                    op, ValidationError.code,
+                    "Explain what went wrong in one full sentence before seeing the correction.")
+            try:
+                expected = Step(**payload)
+            except (TypeError, AttributeError):
+                return _error_response(op, ValidationError.code, "expected_step is malformed.")
+            mistake = classify_mistake(expected, student_after, solver.check_identity)
+            if mistake is None:
+                return {"ok": True, "op": op, "interpretation": expected.after,
+                        "result": {"accepted": True, "correct": True}}
+            return {"ok": True, "op": op, "interpretation": expected.after,
+                    "result": {"accepted": True, "correct": False,
+                               "category": mistake.category,
                                "explanation": mistake.explanation,
                                "correction": mistake.correction}}
         return _error_response(op, ValidationError.code, f"Unhandled op {op!r}.")
