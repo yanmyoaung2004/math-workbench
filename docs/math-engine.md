@@ -11,7 +11,7 @@ One request line → one response line. UTF-8, `\n`-terminated.
 
 ```jsonc
 {
-  "op": "solve_linear" | "solve_quadratic" | "solve_system" | "solve_inequality" | "simplify" | "expand" | "factorise" | "parse" | "sample_graph" | "analyze_graph" | "table_values" | "solve_intersection" | "history_list" | "history_clear" | "practice_generate" | "practice_score" | "ai_explain" | "ai_hint" | "ai_mistake" | "ai_reflect" | "practice_record" | "practice_dashboard" | "review_due" | "review_answer" | "progress_streak" | "assignment_create" | "assignment_list" | "worksheet_generate" | "spec_map" | "concept_note" | "practice_examples" | "glossary_list" | "glossary_get",
+  "op": "solve_linear" | "solve_quadratic" | "solve_system" | "solve_inequality" | "simplify" | "expand" | "factorise" | "parse" | "sample_graph" | "analyze_graph" | "table_values" | "solve_intersection" | "history_list" | "history_clear" | "practice_generate" | "practice_score" | "ai_explain" | "ai_hint" | "ai_mistake" | "ai_reflect" | "practice_record" | "practice_dashboard" | "review_due" | "review_answer" | "progress_streak" | "assignment_create" | "assignment_list" | "worksheet_generate" | "spec_map" | "concept_note" | "practice_examples" | "glossary_list" | "glossary_get" | "ocr_parse",
   "input": "2x + 5 = 17",   // raw user string, required (except solve_system)
   "equations": ["2x + y = 7", "x - y = 2"],  // solve_system only: exactly 2
   "domain": "reals",         // optional, default "reals" (GCSE); "complex" opts in
@@ -39,6 +39,8 @@ Practice (deterministic, offline): `practice_generate` (`topic` incl. `mixed`,
 `difficulty`, `n ≤ 50`, `seed` → engine-verified numeric questions; same seed = same paper)
 and `practice_score` (`attempts` with optional `difficulty` → per-topic mastery % with hint penalty,
 `unlocked` difficulty gates per topic, weakest-topic recommendation; transparent, no ML).
+Image input: `ocr_parse` (`image_base64` → recognized text parsed to a kind +
+interpretation; stub backend refuses honestly until an OCR engine is connected).
 
 Presentation LaTeX: every math string ships a `*_latex` twin rendered by SymPy
 (`2*x**2` → `2 x^{2}`, `1/2` → `\frac{1}{2}`), structure-preserving so operand

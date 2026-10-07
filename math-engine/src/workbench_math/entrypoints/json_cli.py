@@ -40,8 +40,9 @@ from ..graph.sampler import sample
 from ..graph.tables import table_values
 from ..ai.hints import hint as hint_at_level
 from ..ai.mistakes import classify as classify_mistake
+from ..ai.ocr import decode_image, ocr_provider
 from ..ai.openai_compat import OpenAICompatibleProvider
-from ..ai.provider import StubProvider
+from ..ai.provider import AIProviderError, StubProvider
 from ..ai.tutor import TutorService
 from ..practice.concepts import concept_for
 from ..practice.examples import examples_for
@@ -65,7 +66,7 @@ _OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
         "practice_record", "practice_dashboard", "review_due", "review_answer",
         "progress_streak", "assignment_create", "assignment_list",
         "worksheet_generate", "spec_map", "concept_note", "practice_examples",
-        "glossary_list", "glossary_get"}
+        "glossary_list", "glossary_get", "ocr_parse"}
 
 # Ops whose verified results are recorded in local history (calculation log).
 _SAVED_OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
@@ -140,7 +141,7 @@ def handle(request: dict) -> dict:
                   "review_answer", "progress_streak", "assignment_create",
                   "assignment_list", "worksheet_generate", "spec_map",
                   "concept_note", "practice_examples", "glossary_list",
-                  "glossary_get") and (
+                  "glossary_get", "ocr_parse") and (
         not isinstance(raw, str) or not raw.strip()
     ):
         return _error_response(op, ValidationError.code, "Please enter a mathematical expression or equation.")
@@ -375,6 +376,22 @@ def handle(request: dict) -> dict:
                 return _error_response(op, ValidationError.code, f"No glossary entry for {term!r}.")
             return {"ok": True, "op": op, "interpretation": "",
                     "result": {"term": term, "definition": GLOSSARY[term]}}
+        if op == "ocr_parse":
+            image = request.get("image_base64", "")
+            if not isinstance(image, str) or not image.strip():
+                return _error_response(op, ValidationError.code, "Send image_base64.")
+            try:
+                raw_bytes = decode_image(image)
+                text = ocr_provider().extract_text(raw_bytes)
+            except AIProviderError as exc:
+                return _error_response(op, ValidationError.code, str(exc))
+            try:
+                expr = parser.parse(text)
+            except MathEngineError as exc:
+                return _error_response(op, exc.code, f"Read {text!r}, but {exc}")
+            return {"ok": True, "op": op, "interpretation": expr.canonical,
+                    "result": {"text": text, "kind": expr.kind,
+                               "interpretation": expr.canonical}}
         if op == "practice_generate":
             topic = request.get("topic", "")
             difficulty = request.get("difficulty", "")

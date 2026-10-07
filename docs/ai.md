@@ -28,6 +28,14 @@ waits on AI: solve renders immediately, explanations generate after.
 (`expected_step` + `student_after` → `correct` flag or classified correction).
 `solution`/`expected_step` are objects copied from a solve response.
 
+## Image input (OCR seam)
+
+`ocr_parse` accepts `image_base64` (2 MB cap, data-URL tolerant) and returns
+recognized text parsed to `{text, kind, interpretation}`. Only the stub backend
+ships in V1, so it refuses honestly (`No OCR engine is configured…`) instead
+of hallucinating text. Real engines register in `ai/ocr.py:ocr_provider()`
+(on-device or cloud behind the same key pattern); the protocol is frozen.
+
 ## Tests
 
 Unit (stub determinism, ladder secrecy, classification incl. the

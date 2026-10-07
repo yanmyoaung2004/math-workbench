@@ -124,6 +124,17 @@ def test_content_ops_round_trip():
     assert "unevaluated" in term["result"]["definition"]
 
 
+def test_ocr_stub_is_honest():
+    import base64
+
+    tiny = base64.b64encode(b"fakepng").decode()
+    res = run_requests([{"op": "ocr_parse", "image_base64": tiny}])[0]
+    assert res["ok"] is False and res["error"]["code"] == "VALIDATION_ERROR"
+    assert "OCR" in res["error"]["message"]
+    bad = run_requests([{"op": "ocr_parse", "image_base64": "!!!"}])[0]
+    assert bad["ok"] is False
+
+
 def test_ai_ops_round_trip():
     solved = run_requests([{"op": "solve_linear", "input": "2x + 5 = 17"}])[0]
     solution = solved["result"]
