@@ -37,4 +37,11 @@ describe("MockEngineService", () => {
     const met = await service.intersect("y = 2x + 4", "y = 10");
     expect(met.points[0]).toMatchObject({ x: 3, y: 10 });
   });
+
+  it("surfaces the honest OCR-unavailable message", async () => {
+    const service = new MockEngineService();
+    await expect(service.ocrParse("aGVsbG8=")).rejects.toMatchObject(
+      expect.objectContaining({ code: "VALIDATION_ERROR" }),
+    );
+  });
 });

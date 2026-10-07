@@ -1,12 +1,19 @@
 import { unwrap, type JsonLinesSession } from "./protocol.ts";
 import type {
   AnalysisResult,
+  Assignment,
+  Dashboard,
   EngineResponse,
   HistoryEntry,
+  PracticeAttempt,
   Question,
+  ReviewItem,
   SampleResult,
   SolutionResult,
+  SpecPoint,
   TableResult,
+  WorkedExample,
+  Worksheet,
 } from "./types.ts";
 
 /** Shared request/response mapping. Transports implement `send`. */
@@ -66,6 +73,70 @@ export abstract class BaseEngineService {
     recommendation: string;
   }> {
     return this.result({ op: "practice_score", attempts });
+  }
+
+  practiceRecord(attempt: PracticeAttempt): Promise<{ recorded: number }> {
+    return this.result({ op: "practice_record", ...attempt });
+  }
+
+  practiceDashboard(): Promise<Dashboard> {
+    return this.result({ op: "practice_dashboard" });
+  }
+
+  reviewDue(limit = 20): Promise<{ due: ReviewItem[] }> {
+    return this.result({ op: "review_due", limit });
+  }
+
+  reviewAnswer(prompt: string, topic: string, correct: boolean, hintsUsed = 0): Promise<{
+    next_due: string; interval_days: number; ease: number;
+  }> {
+    return this.result({ op: "review_answer", prompt, topic, correct, hints_used: hintsUsed });
+  }
+
+  progressStreak(): Promise<{ streak_days: number; active_today: boolean }> {
+    return this.result({ op: "progress_streak" });
+  }
+
+  assignmentCreate(title: string, topic: string, difficulty: string, n: number, seed: number): Promise<{ created: number }> {
+    return this.result({ op: "assignment_create", title, topic, difficulty, n, seed });
+  }
+
+  assignmentList(): Promise<{ assignments: Assignment[] }> {
+    return this.result({ op: "assignment_list" });
+  }
+
+  worksheetGenerate(topic: string, difficulty: string, n: number, seed: number, withAnswers = true, title = "", spec = ""): Promise<Worksheet> {
+    return this.result({ op: "worksheet_generate", topic, difficulty, n, seed, with_answers: withAnswers, title, spec });
+  }
+
+  specMap(): Promise<{ spec_points: SpecPoint[] }> {
+    return this.result({ op: "spec_map" });
+  }
+
+  conceptNote(rule: string): Promise<{ rule: string; note: string }> {
+    return this.result({ op: "concept_note", rule });
+  }
+
+  practiceExamples(topic = "all"): Promise<{ examples: WorkedExample[] }> {
+    return this.result({ op: "practice_examples", topic });
+  }
+
+  glossaryList(): Promise<{ terms: string[] }> {
+    return this.result({ op: "glossary_list" });
+  }
+
+  glossaryGet(term: string): Promise<{ term: string; definition: string }> {
+    return this.result({ op: "glossary_get", term });
+  }
+
+  aiReflect(expectedStep: unknown, studentAfter: string, reflection: string): Promise<{
+    accepted: boolean; correct: boolean; category?: string; explanation?: string; correction?: string;
+  }> {
+    return this.result({ op: "ai_reflect", expected_step: expectedStep, student_after: studentAfter, reflection });
+  }
+
+  ocrParse(imageBase64: string): Promise<{ text: string; kind: string; interpretation: string }> {
+    return this.result({ op: "ocr_parse", image_base64: imageBase64 });
   }
 
   historyList(limit = 50): Promise<{ entries: HistoryEntry[] }> {

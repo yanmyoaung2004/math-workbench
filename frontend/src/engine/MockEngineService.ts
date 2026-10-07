@@ -145,6 +145,66 @@ export class MockEngineService extends BaseEngineService {
     if (op === "ai_mistake") {
       return { ok: true, op, interpretation: LINEAR.interpretation, result: { correct: true } };
     }
+    if (op === "ai_reflect") {
+      return {
+        ok: true, op, interpretation: LINEAR.interpretation,
+        result: { accepted: true, correct: false, category: "sign", explanation: "Check the sign.", correction: "2*x = 12" },
+      };
+    }
+    if (op === "practice_record") {
+      return { ok: true, op, interpretation: "", result: { recorded: 1 } };
+    }
+    if (op === "practice_dashboard") {
+      return {
+        ok: true, op, interpretation: "",
+        result: { mastery: { linear: 100 }, recommendation: "Balanced.", unlocked: { linear: ["beginner", "basic"] }, by_mistake: {}, attempts: 2 },
+      };
+    }
+    if (op === "review_due") {
+      return { ok: true, op, interpretation: "", result: { due: [] } };
+    }
+    if (op === "review_answer") {
+      return { ok: true, op, interpretation: "", result: { next_due: "2026-10-08", interval_days: 1, ease: 2.5 } };
+    }
+    if (op === "progress_streak") {
+      return { ok: true, op, interpretation: "", result: { streak_days: 3, active_today: true } };
+    }
+    if (op === "assignment_create") {
+      return { ok: true, op, interpretation: "", result: { created: 1 } };
+    }
+    if (op === "assignment_list") {
+      return { ok: true, op, interpretation: "", result: { assignments: [] } };
+    }
+    if (op === "worksheet_generate") {
+      return {
+        ok: true, op, interpretation: "",
+        result: { title: "Mock sheet", topic: "linear", difficulty: "basic", seed: 1, prompts: ["3x + 7 = 25"], answer_key: [["6"]] },
+      };
+    }
+    if (op === "spec_map") {
+      return {
+        ok: true, op, interpretation: "",
+        result: { spec_points: [{ code: "ALG-LIN-2", topic: "linear", difficulty: "basic", label: "Two-step linear equations" }] },
+      };
+    }
+    if (op === "concept_note") {
+      return { ok: true, op, interpretation: "", result: { rule: "discriminant", note: "Mock concept note." } };
+    }
+    if (op === "practice_examples") {
+      return {
+        ok: true, op, interpretation: "",
+        result: { examples: [{ topic: "linear", prompt: "2x + 5 = 17", exact: ["6"], prompt_latex: "2 x + 5 = 17", exact_latex: ["6"] }] },
+      };
+    }
+    if (op === "glossary_list") {
+      return { ok: true, op, interpretation: "", result: { terms: ["coefficient", "discriminant"] } };
+    }
+    if (op === "glossary_get") {
+      return { ok: true, op, interpretation: "", result: { term: "discriminant", definition: "Mock definition." } };
+    }
+    if (op === "ocr_parse") {
+      return { ok: false, op, error: { code: "VALIDATION_ERROR", message: "No OCR engine is configured." } };
+    }
     throw new EngineError("VALIDATION_ERROR", `Mock has no fixture for op ${op}.`);
   }
 }

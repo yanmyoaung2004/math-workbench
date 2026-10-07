@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import Plotly from "plotly.js-dist-min";
 import { getEngine } from "../engine/index.ts";
+import { substituteParams } from "../engine/markdown.ts";
 import { EngineError, type AnalysisResult, type SampleResult } from "../engine/types.ts";
 import { effectiveTheme, useAppStore } from "../state/store.ts";
-import { Button, Card, EngineInput, ErrorBanner } from "../ui/primitives.tsx";
+import { Button, Card, EngineInput, ErrorBanner, GhostButton } from "../ui/primitives.tsx";
 import Math from "../ui/Math.tsx";
 import { cn } from "../ui/cn.ts";
 
@@ -47,25 +48,70 @@ export default function GraphScreen() {
   const [tStart, setTStart] = useState("-3");
   const [tEnd, setTEnd] = useState("3");
   const [tStep, setTStep] = useState("1");
+  const [slidersOn, setSlidersOn] = useState(false);
+  const [template, setTemplate] = useState("y = a*x^2 + b*x + c");
+  const [params, setParams] = useState({ a: 1, b: -4, c: 3 });
   const theme = useAppStore((s) => s.theme);
   const dark = effectiveTheme(theme) === "dark";
+
+  const effective = slidersOn ? substituteParams(template, params) : input;
 
   const plot = useMutation({
     mutationFn: async () => {
       const engine = await getEngine();
       const [sampled, analysis] = await Promise.all([
-        engine.sampleGraph(input, Number(xMin), Number(xMax), 400),
-        engine.analyzeGraph(input),
+        engine.sampleGraph(effective, Number(xMin), Number(xMax), 400),
+        engine.analyzeGraph(effective),
       ]);
       return { sampled, analysis } as { sampled: SampleResult; analysis: AnalysisResult };
     },
   });
   const table = useMutation({
-    mutationFn: async () => (await getEngine()).tableValues(input, tStart, tEnd, tStep),
+    mutationFn: async () => (await getEngine()).tableValues(effective, tStart, tEnd, tStep),
   });
 
   return (
     <div className="flex flex-col gap-4">
+      <Card className="p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="font-semibold">Explore parameters</h2>
+          <GhostButton aria-pressed={slidersOn} onClick={() => setSlidersOn((v) => !v)} className={slidersOn ? "bg-accent-600/10 font-semibold" : ""}>
+            {slidersOn ? "Using sliders" : "Use sliders"}
+          </GhostButton>
+        </div>
+        {slidersOn && (
+          <>
+            <EngineInput
+              value={template}
+              onChange={(e) => setTemplate(e.target.value)}
+              aria-label="Parametric template (a, b, c)"
+              placeholder="y = a*x^2 + b*x + c"
+              className="py-2 text-base"
+            />
+            <p className="math mt-1 text-sm text-slate-500">{effective}</p>
+            <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {(["a", "b", "c"] as const).map((name) => (
+                <label key={name} className="text-sm">
+                  <span className="mb-1 flex justify-between text-xs uppercase tracking-wide text-slate-500">
+                    <span>{name}</span>
+                    <span className="math font-semibold text-slate-700 dark:text-slate-200">{params[name]}</span>
+                  </span>
+                  <input
+                    type="range"
+                    min={-5}
+                    max={5}
+                    step={0.5}
+                    value={params[name]}
+                    onChange={(e) => setParams((p) => ({ ...p, [name]: Number(e.target.value) }))}
+                    className="w-full accent-[#3b63e0]"
+                    aria-label={`Parameter ${name}`}
+                  />
+                </label>
+              ))}
+            </div>
+          </>
+        )}
+      </Card>
       <form
         className="flex flex-wrap items-end gap-2"
         onSubmit={(e) => {

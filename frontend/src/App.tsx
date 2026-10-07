@@ -4,6 +4,8 @@ import { cn } from "./ui/cn.ts";
 import SolverScreen from "./screens/SolverScreen.tsx";
 import GraphScreen from "./screens/GraphScreen.tsx";
 import PracticeScreen from "./screens/PracticeScreen.tsx";
+import ProgressScreen from "./screens/ProgressScreen.tsx";
+import ReferenceScreen from "./screens/ReferenceScreen.tsx";
 import HistoryScreen from "./screens/HistoryScreen.tsx";
 import SettingsScreen from "./screens/SettingsScreen.tsx";
 
@@ -11,6 +13,8 @@ const NAV: { id: Screen; label: string; hint: string }[] = [
   { id: "solver", label: "Solver", hint: "Solve with steps" },
   { id: "graph", label: "Graph", hint: "Visualize functions" },
   { id: "practice", label: "Practice", hint: "Train by topic" },
+  { id: "progress", label: "Progress", hint: "Mastery and review" },
+  { id: "reference", label: "Reference", hint: "Glossary and specs" },
   { id: "history", label: "History", hint: "Past calculations" },
   { id: "settings", label: "Settings", hint: "Theme and engine" },
 ];
@@ -91,6 +95,8 @@ export default function App() {
         {screen === "solver" && <SolverScreen />}
         {screen === "graph" && <GraphScreen />}
         {screen === "practice" && <PracticeScreen />}
+        {screen === "progress" && <ProgressScreen />}
+        {screen === "reference" && <ReferenceScreen />}
         {screen === "history" && <HistoryScreen />}
         {screen === "settings" && <SettingsScreen />}
       </main>

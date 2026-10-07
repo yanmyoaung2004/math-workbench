@@ -84,6 +84,64 @@ export interface Question {
   expected_latex: string[];
 }
 
+export interface PracticeAttempt {
+  topic: string;
+  correct: boolean;
+  hints_used: number;
+  difficulty?: string;
+  mistake?: string;
+}
+
+export interface Dashboard {
+  mastery: Record<string, number>;
+  recommendation: string;
+  unlocked: Record<string, string[]>;
+  by_mistake: Record<string, number>;
+  attempts: number;
+}
+
+export interface ReviewItem {
+  prompt: string;
+  topic: string;
+  next_due: string;
+  interval_days: number;
+  ease: number;
+}
+
+export interface Assignment {
+  id: number;
+  title: string;
+  topic: string;
+  difficulty: string;
+  n: number;
+  seed: number;
+  created: string;
+}
+
+export interface Worksheet {
+  title: string;
+  topic: string;
+  difficulty: string;
+  seed: number;
+  prompts: string[];
+  answer_key: string[][];
+}
+
+export interface SpecPoint {
+  code: string;
+  topic: string;
+  difficulty: string;
+  label: string;
+}
+
+export interface WorkedExample {
+  topic: string;
+  prompt: string;
+  exact: string[];
+  prompt_latex: string;
+  exact_latex: string[];
+}
+
 export interface HistoryEntry {
   id: number;
   timestamp: string;
