@@ -55,6 +55,12 @@ def ocr_provider(kind: str = "") -> OCRProvider:
     import os
 
     which = (kind or os.environ.get("WORKBENCH_OCR_PROVIDER", "stub")).strip().lower()
+    if which == "mathpix":
+        from .mathpix import MathpixOCRProvider
+
+        return MathpixOCRProvider()
     if which != "stub":
-        raise AIProviderError(f"Unknown OCR provider {which!r} (only 'stub' in V1).")
+        from .provider import AIProviderError
+
+        raise AIProviderError(f"Unknown OCR provider {which!r} (stub or mathpix in V2).")
     return StubOCRProvider()  # real engines register here
