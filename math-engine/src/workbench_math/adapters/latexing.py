@@ -17,6 +17,7 @@ from dataclasses import replace
 from sympy import latex as _latex
 
 from ..domain.models import Binding, Solution, Step
+from ..geometry.models import GeometryResult, GeometryStep
 from ..graph.models import AnalysisResult, FeaturePoint, TableResult
 from ._sympy_common import to_sympy
 
@@ -94,4 +95,13 @@ def latex_analysis(result: AnalysisResult) -> AnalysisResult:
         y_intercept=latex_point(result.y_intercept) if result.y_intercept else None,
         axis_latex=latex_of(result.axis_of_symmetry),
         gradient_latex=latex_of(result.gradient),
+    )
+
+
+def latex_geometry(result: GeometryResult) -> GeometryResult:
+    return replace(
+        result,
+        result_latex=latex_of(result.result_exact),
+        steps=tuple(
+            replace(s, math_latex=latex_of(s.math)) for s in result.steps),
     )

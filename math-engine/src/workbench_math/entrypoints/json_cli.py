@@ -19,6 +19,7 @@ from ..adapters.sqlite_history import SqliteHistory
 from ..adapters.sqlite_practice import SqlitePractice
 from ..adapters.latexing import (
     latex_analysis,
+    latex_geometry,
     latex_of,
     latex_point,
     latex_solution,
@@ -38,6 +39,7 @@ from ..graph.analysis import analyze
 from ..graph.intersections import intersect
 from ..graph.models import SampleRequest
 from ..graph.sampler import sample
+from ..geometry.formulas import solve as geometry_solve
 from ..graph.tables import table_values
 from ..linalg.matrices import (
     cross as vector_cross,
@@ -83,7 +85,8 @@ _OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
         "glossary_list", "glossary_get", "ocr_parse",
         "differentiate", "integrate", "definite_integrate",
         "matrix_multiply", "matrix_determinant", "matrix_inverse",
-        "vector_dot", "vector_cross", "vector_magnitude"}
+        "vector_dot", "vector_cross", "vector_magnitude",
+        "geometry_solve"}
 
 # Ops whose verified results are recorded in local history (calculation log).
 _SAVED_OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
@@ -162,7 +165,7 @@ def handle(request: dict) -> dict:
                   "glossary_get", "ocr_parse", "differentiate", "integrate",
                   "definite_integrate", "matrix_multiply", "matrix_determinant",
                   "matrix_inverse", "vector_dot", "vector_cross",
-                  "vector_magnitude") and (
+                  "vector_magnitude", "geometry_solve") and (
         not isinstance(raw, str) or not raw.strip()
     ):
         return _error_response(op, ValidationError.code, "Please enter a mathematical expression or equation.")
@@ -218,6 +221,18 @@ def handle(request: dict) -> dict:
                 return _error_response(op, exc.code, str(exc))
             return {"ok": True, "op": op, "interpretation": res.input_display,
                     "result": asdict(res)}
+        if op == "geometry_solve":
+            shape = str(request.get("shape", ""))
+            find = str(request.get("find", ""))
+            inputs = request.get("inputs", {})
+            if not isinstance(inputs, dict):
+                return _error_response(op, ValidationError.code, "Send inputs as an object of named values.")
+            try:
+                result = geometry_solve(shape, find, {k: str(v) for k, v in inputs.items()})
+            except MathEngineError as exc:
+                return _error_response(op, exc.code, str(exc))
+            return {"ok": True, "op": op, "interpretation": f"{shape}: {find}",
+                    "result": asdict(latex_geometry(result))}
         if op == "sample_graph":
             try:
                 req = SampleRequest(
