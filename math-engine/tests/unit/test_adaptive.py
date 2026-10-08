@@ -5,6 +5,7 @@ import pytest
 from workbench_math.practice.at_risk import detect
 from workbench_math.practice.bkt import BKTParams, predict_correct, track, update
 from workbench_math.practice.mastery import bkt_gated_levels
+from workbench_math.practice.next import choose_difficulty, solve_rates
 
 
 def test_bkt_update_hand_computed():
@@ -25,6 +26,18 @@ def test_bkt_gates():
     assert bkt_gated_levels(0.5, 1) == ["beginner", "basic"]
     assert bkt_gated_levels(0.97, 10) == ["beginner", "basic", "intermediate", "advanced", "exam"]
     assert bkt_gated_levels(0.97, 2) == ["beginner", "basic"]  # needs evidence
+
+
+def test_irt_selection():
+    unlocked = ["beginner", "basic", "intermediate"]
+    assert choose_difficulty("linear", unlocked, {}) == "beginner"  # cold start
+    rates = {"linear": {"beginner": 1.0, "basic": 0.4}}
+    counts = {"linear": {"beginner": 5, "basic": 5}}
+    assert choose_difficulty("linear", unlocked, rates, 2, counts) == "basic"  # weakest first
+    rates = {"linear": {"beginner": 1.0, "basic": 1.0, "intermediate": 1.0}}
+    counts = {"linear": {"beginner": 5, "basic": 5, "intermediate": 5}}
+    assert choose_difficulty("linear", unlocked, rates, 2, counts) == "beginner"  # all solid, first tried
+    assert solve_rates({("linear", "basic"): (3, 4)}) == {"linear": {"basic": 0.75}}
 
 
 def _attempt(topic, correct, hints=0, mistake=""):

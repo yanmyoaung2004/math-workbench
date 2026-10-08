@@ -60,6 +60,7 @@ from ..practice.mastery import (
     topic_mastery,
     unlocked_difficulties,
 )
+from ..practice.next import choose_difficulty, solve_rates
 
 _OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
         "simplify", "expand", "factorise", "parse",
@@ -68,6 +69,7 @@ _OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
         "ai_explain", "ai_hint", "ai_mistake", "ai_reflect",
         "practice_record", "practice_dashboard", "review_due", "review_answer",
         "progress_streak", "assignment_create", "assignment_list", "practice_override",
+        "practice_next",
         "worksheet_generate", "spec_map", "concept_note", "practice_examples",
         "glossary_list", "glossary_get", "ocr_parse"}
 
@@ -142,7 +144,7 @@ def handle(request: dict) -> dict:
                   "ai_explain", "ai_hint", "ai_mistake", "ai_reflect",
                   "practice_record", "practice_dashboard", "review_due",
                   "review_answer", "progress_streak", "assignment_create",
-                  "assignment_list", "practice_override", "worksheet_generate", "spec_map",
+                  "assignment_list", "practice_override", "practice_next", "worksheet_generate", "spec_map",
                   "concept_note", "practice_examples", "glossary_list",
                   "glossary_get", "ocr_parse") and (
         not isinstance(raw, str) or not raw.strip()
@@ -260,6 +262,13 @@ def handle(request: dict) -> dict:
                 p, n = practice.get_bkt(topic)
                 bkt[topic] = round(p, 4)
                 gates[topic] = bkt_gated_levels(p, n)
+            counts: dict[tuple[str, str], list] = {}
+            for a in attempts:
+                key = (a.topic, a.difficulty or "basic")
+                entry = counts.setdefault(key, [0, 0])
+                entry[0] += int(a.correct)
+                entry[1] += 1
+            rates = solve_rates({k: (v[0], v[1]) for k, v in counts.items()})
             return {"ok": True, "op": op, "interpretation": "",
                     "result": {"mastery": mastery,
                                "recommendation": recommend(mastery),
@@ -267,6 +276,7 @@ def handle(request: dict) -> dict:
                                             for t in sorted({a.topic for a in scored})},
                                "bkt": bkt,
                                "bkt_gates": gates,
+                               "difficulty_rates": rates,
                                "by_mistake": by_mistake,
                                "at_risk": [asdict(f) for f in detect_risk(attempts)],
                                "attempts": len(attempts)}}
@@ -326,6 +336,33 @@ def handle(request: dict) -> dict:
         if op == "assignment_list":
             return {"ok": True, "op": op, "interpretation": "",
                     "result": {"assignments": [asdict(a) for a in practice.list_assignments()]}}
+        if op == "practice_next":
+            topic = str(request.get("topic", ""))
+            if topic not in ("linear", "quadratic"):
+                return _error_response(op, ValidationError.code, "practice_next needs topic linear or quadratic.")
+            try:
+                seed = int(request.get("seed", 0))
+            except (TypeError, ValueError):
+                return _error_response(op, ValidationError.code, "seed must be an integer.")
+            attempts = practice.recent_attempts(1000)
+            tallies: dict[tuple[str, str], list] = {}
+            totals: dict[str, dict[str, int]] = {}
+            for a in attempts:
+                key = (a.topic, a.difficulty or "basic")
+                cell = tallies.setdefault(key, [0, 0])
+                cell[0] += int(a.correct)
+                cell[1] += 1
+                totals.setdefault(a.topic, {}).setdefault(a.difficulty or "basic", 0)
+                totals[a.topic][a.difficulty or "basic"] += 1
+            rates = solve_rates({k: (v[0], v[1]) for k, v in tallies.items()})
+            p, n = practice.get_bkt(topic)
+            difficulty = choose_difficulty(topic, bkt_gated_levels(p, n), rates, totals)
+            question = generate_questions(topic, difficulty, 1, seed, parser, solver)[0]
+            return {"ok": True, "op": op, "interpretation": "",
+                    "result": {"topic": topic, "difficulty": difficulty,
+                               "prompt": question.prompt, "expected": list(question.expected),
+                               "prompt_latex": latex_of(question.prompt),
+                               "expected_latex": [latex_of(e) for e in question.expected]}}
         if op == "practice_override":
             try:
                 attempt_id = int(request.get("attempt_id", 0))

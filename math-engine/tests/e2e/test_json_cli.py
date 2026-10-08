@@ -121,6 +121,15 @@ def test_bkt_gates_and_override_round_trip():
     assert missing["ok"] is False
 
 
+def test_practice_next_adapts():
+    nxt = run_requests([{"op": "practice_next", "topic": "linear", "seed": 42}])[0]
+    assert nxt["ok"] is True
+    assert nxt["result"]["difficulty"] in ("beginner", "basic")
+    assert nxt["result"]["prompt"] and nxt["result"]["expected"]
+    bad = run_requests([{"op": "practice_next", "topic": "mixed", "seed": 1}])[0]
+    assert bad["ok"] is False
+
+
 def test_content_ops_round_trip():
     sheet, spec, note, examples, terms, term = run_requests([
         {"op": "worksheet_generate", "topic": "linear", "difficulty": "basic",
