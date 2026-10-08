@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from ..domain.models import Domain, Expression
 from .parser_port import ParserPort
 
-__all__ = ["LinearFacts", "QuadraticFacts", "SystemFacts", "InequalityFacts", "TransformFacts", "ParserPort", "SolverPort"]
+__all__ = ["LinearFacts", "QuadraticFacts", "SystemFacts", "InequalityFacts", "CalculusFacts", "TransformFacts", "ParserPort", "SolverPort"]
 
 
 @dataclass(frozen=True)
@@ -40,6 +40,26 @@ class TransformFacts:
     interpretation: str
     before: str
     after: str
+
+
+@dataclass(frozen=True)
+class CalculusFacts:
+    """Facts about differentiate | integrate | definite_integrate.
+
+    `operation` names the calculus op; `result`/`approximate` are canonical
+    strings; `a`/`b` carry definite bounds ("" when unused); `set_tag` is
+    "ok" | "unsupported".
+    """
+
+    symbol: str
+    operation: str
+    result: str
+    approximate: str
+    set_tag: str
+    a: str = ""
+    b: str = ""
+    chain: tuple[tuple[str, str, str, str], ...] = ()
+    interpretation: str = ""
 
 
 @dataclass(frozen=True)
@@ -137,6 +157,22 @@ class SolverPort(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
+    def check_derivative(self, expr: str, symbol: str) -> bool:
+        """Finite-difference check of our symbolic derivative (independent)."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def check_antiderivative(self, anti: str, integrand: str, symbol: str) -> bool:
+        """Differentiate the antiderivative; must recover the integrand."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def check_definite(self, expr: str, symbol: str, a: str, b: str,
+                       candidate: str) -> bool:
+        """Simpson-rule check of a definite integral value (independent)."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def solve_quadratic(
         self, expr: Expression, domain: Domain = Domain.REALS, method: str = "auto"
     ) -> QuadraticFacts:
@@ -155,4 +191,13 @@ class SolverPort(abc.ABC):
         self, expr: Expression, domain: Domain = Domain.REALS
     ) -> InequalityFacts:
         """Single-variable linear inequality (V1)."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def differentiate(self, expr: Expression) -> CalculusFacts:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def integrate(self, expr: Expression, a: str = "", b: str = "") -> CalculusFacts:
+        """Indefinite when a/b empty, else definite from a to b."""
         raise NotImplementedError

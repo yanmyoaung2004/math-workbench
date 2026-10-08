@@ -7,6 +7,10 @@ import yaml
 
 from workbench_math.adapters.sympy_parser import SymPyParser
 from workbench_math.adapters.sympy_solver import SymPySolver
+from workbench_math.application.calculus import (
+    differentiate_expression,
+    integrate_expression,
+)
 from workbench_math.application.solve_inequality import solve_inequality
 from workbench_math.application.solve_linear import solve_linear
 from workbench_math.application.solve_quadratic import solve_quadratic
@@ -16,7 +20,7 @@ from workbench_math.domain.models import Domain
 
 HERE = Path(__file__).parent
 CASES = []
-for name in ("linear.yaml", "quadratics.yaml", "systems.yaml", "inequalities.yaml"):
+for name in ("linear.yaml", "quadratics.yaml", "systems.yaml", "inequalities.yaml", "calculus.yaml"):
     for case in yaml.safe_load((HERE / name).read_text(encoding="utf-8")):
         case.setdefault("op", "solve_linear")
         CASES.append(case)
@@ -32,6 +36,13 @@ def _run(case):
         return solve_system(case["input"], PARSER, SOLVER, Domain.REALS)
     if case["op"] == "solve_inequality":
         return solve_inequality(case["input"], PARSER, SOLVER, Domain.REALS)
+    if case["op"] == "differentiate":
+        return differentiate_expression(case["input"], PARSER, SOLVER)
+    if case["op"] == "integrate":
+        return integrate_expression(case["input"], PARSER, SOLVER)
+    if case["op"] == "definite_integrate":
+        return integrate_expression(case["input"], PARSER, SOLVER,
+                                    case.get("a", ""), case.get("b", ""))
     return solve_linear(case["input"], PARSER, SOLVER, Domain.REALS)
 
 

@@ -101,6 +101,50 @@ EXPLANATIONS: dict[str, tuple[str, str]] = {
         "inequality_sign_reversal",
         "Multiply by {operand} (negative), so reverse the inequality sign.",
     ),
+    "apply_power_rule": (
+        "power_rule",
+        "Differentiate {operand}: multiply by the power, drop it by one.",
+    ),
+    "apply_constant_rule": (
+        "constant_rule",
+        "The derivative of a constant ({operand}) is zero.",
+    ),
+    "apply_trig_rule": (
+        "trig_derivative",
+        "Differentiate {operand} using the standard trig derivative.",
+    ),
+    "apply_exp_rule": (
+        "exponential_derivative",
+        "Differentiate {operand}: the exponential reproduces itself.",
+    ),
+    "apply_chain_rule": (
+        "chain_rule",
+        "Differentiate {operand} layer by layer, outside first.",
+    ),
+    "apply_general_rule": (
+        "differentiation",
+        "Differentiate {operand}.",
+    ),
+    "integrate_power_term": (
+        "power_rule_reversed",
+        "Integrate {operand}: raise the power by one, divide by it.",
+    ),
+    "integrate_constant_term": (
+        "constant_integral",
+        "Integrate {operand}: a constant becomes itself times x.",
+    ),
+    "integrate_general": (
+        "integration",
+        "Integrate {operand}.",
+    ),
+    "add_integration_constant": (
+        "integration_constant",
+        "Add the constant of integration {operand}.",
+    ),
+    "evaluate_bounds": (
+        "fundamental_theorem",
+        "Evaluate the antiderivative at {operand} and subtract.",
+    ),
 }
 
 INEQUALITY_FLIP_NOTE = (

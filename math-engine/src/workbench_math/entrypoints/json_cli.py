@@ -26,6 +26,7 @@ from ..adapters.latexing import (
 )
 from ..adapters.sympy_parser import SymPyParser
 from ..adapters.sympy_solver import SymPySolver
+from ..application.calculus import differentiate_expression, integrate_expression
 from ..application.solve_inequality import solve_inequality
 from ..application.solve_linear import solve_linear
 from ..application.solve_quadratic import solve_quadratic
@@ -71,11 +72,13 @@ _OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
         "progress_streak", "assignment_create", "assignment_list", "practice_override",
         "practice_next",
         "worksheet_generate", "spec_map", "concept_note", "practice_examples",
-        "glossary_list", "glossary_get", "ocr_parse"}
+        "glossary_list", "glossary_get", "ocr_parse",
+        "differentiate", "integrate", "definite_integrate"}
 
 # Ops whose verified results are recorded in local history (calculation log).
 _SAVED_OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
-              "simplify", "expand", "factorise"}
+              "simplify", "expand", "factorise",
+              "differentiate", "integrate", "definite_integrate"}
 
 
 def _today() -> str:
@@ -146,7 +149,8 @@ def handle(request: dict) -> dict:
                   "review_answer", "progress_streak", "assignment_create",
                   "assignment_list", "practice_override", "practice_next", "worksheet_generate", "spec_map",
                   "concept_note", "practice_examples", "glossary_list",
-                  "glossary_get", "ocr_parse") and (
+                  "glossary_get", "ocr_parse", "differentiate", "integrate",
+                  "definite_integrate") and (
         not isinstance(raw, str) or not raw.strip()
     ):
         return _error_response(op, ValidationError.code, "Please enter a mathematical expression or equation.")
@@ -169,6 +173,16 @@ def handle(request: dict) -> dict:
             return _solution_to_response(op, solve_system(equations, parser, solver, domain), "; ".join(equations))
         if op == "solve_inequality":
             return _solution_to_response(op, solve_inequality(raw, parser, solver, domain), raw)
+        if op == "differentiate":
+            return _solution_to_response(op, differentiate_expression(raw, parser, solver), raw)
+        if op == "integrate":
+            return _solution_to_response(op, integrate_expression(raw, parser, solver), raw)
+        if op == "definite_integrate":
+            a = request.get("a", "")
+            b = request.get("b", "")
+            if not isinstance(a, str) or not isinstance(b, str):
+                return _error_response(op, ValidationError.code, "Send bounds a and b as strings.")
+            return _solution_to_response(op, integrate_expression(raw, parser, solver, a, b), raw)
         if op == "sample_graph":
             try:
                 req = SampleRequest(

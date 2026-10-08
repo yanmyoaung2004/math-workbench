@@ -9,14 +9,15 @@ independent substitution check, step-chain strings built from real SymPy objects
 from __future__ import annotations
 
 from sympy import (
-    Eq, Ge, Gt, Interval, Le, Lt, N, Poly, S, Symbol, Union,
-    expand, factor, factor_list, simplify, sqrt, sstr,
+    Eq, Ge, Gt, Integral, Interval, Le, Lt, N, Poly, S, Symbol, Union,
+    diff, expand, factor, factor_list, integrate, simplify, sqrt, sstr,
 )
 from sympy.solvers.solveset import linsolve, solveset
 
 from ..domain.exceptions import UnsolvableError, ValidationError
 from ..domain.models import Domain, Expression
 from ..ports.solver_port import (
+    CalculusFacts,
     InequalityFacts,
     LinearFacts,
     QuadraticFacts,
@@ -682,6 +683,174 @@ class SymPySolver(SolverPort):
                 {"<": value < zero, "<=": value <= zero,
                  ">": value > zero, ">=": value >= zero}[rel]
             )
+        except Exception:
+            return False
+
+    # -- calculus ------------------------------------------------------------
+    @staticmethod
+    def _calc_symbol(expr: Expression):
+        if expr.kind == "equation":
+            raise ValidationError(
+                "Differentiate or integrate an expression in x — no '=' needed.")
+        parsed = to_sympy(expr.canonical)
+        symbols = parsed.free_symbols
+        if len(symbols) > 1:
+            raise UnsolvableError("Calculus in one variable (x) in V2.")
+        x = next(iter(symbols)) if symbols else Symbol("x")
+        if x.name != "x":
+            raise ValidationError("Use x as the variable in V2.")
+        return parsed, x
+
+    @staticmethod
+    def _term_rule(term, x: Symbol) -> str:
+        from sympy import E, cos, exp, sin, tan
+
+        if term.is_number:
+            return "apply_constant_rule"
+        try:
+            Poly(term, x)
+            return "apply_power_rule"
+        except Exception:
+            pass
+        if term.func in (sin, cos, tan) and term.args[0] == x:
+            return "apply_trig_rule"
+        if term.func is exp and term.args[0] == x:
+            return "apply_exp_rule"
+        if term.is_Pow and term.base is E:
+            return "apply_exp_rule"
+        if term.free_symbols == {x}:
+            return "apply_chain_rule"
+        return "apply_general_rule"
+
+    def differentiate(self, expr: Expression) -> CalculusFacts:
+        parsed, x = self._calc_symbol(expr)
+        terms = parsed.as_ordered_terms()
+        cur, chain = parsed, []
+        before = expr.canonical
+        if canonical(expand(parsed)) != expr.canonical:
+            after = canonical(expand(parsed))
+            chain.append(("rewrite", "", before, after))
+            before, cur = after, expand(parsed)
+            terms = cur.as_ordered_terms()
+        for term in terms:
+            op = self._term_rule(term, x)
+            try:
+                piece = diff(term, x)
+            except Exception as exc:
+                raise UnsolvableError("I couldn't differentiate that term.") from exc
+            cur = expand(cur - term + piece)
+            after = canonical(cur)
+            chain.append((op, canonical(term), before, after))
+            before = after
+        result = canonical(cur)
+        return CalculusFacts(
+            symbol="x", operation="differentiate", result=result,
+            approximate=result, set_tag="ok", chain=tuple(chain),
+            interpretation=expr.canonical)
+
+    def integrate(self, expr: Expression, a: str = "", b: str = "") -> CalculusFacts:
+        parsed, x = self._calc_symbol(expr)
+        if bool(a) != bool(b):
+            raise ValidationError("Definite integrals need both bounds a and b.")
+        try:
+            anti = integrate(parsed, x)
+        except Exception as exc:
+            raise UnsolvableError("I couldn't integrate that.") from exc
+        if isinstance(anti, Integral):
+            raise UnsolvableError(
+                "That integral has no elementary form I can show steps for.")
+        cur, chain = parsed, []
+        before = expr.canonical
+        if canonical(expand(parsed)) != expr.canonical:
+            after = canonical(expand(parsed))
+            chain.append(("rewrite", "", before, after))
+            before, cur = after, expand(parsed)
+        for term in cur.as_ordered_terms():
+            try:
+                Poly(term, x)
+                op = "integrate_power_term"
+            except Exception:
+                op = "integrate_constant_term" if term.is_number else "integrate_general"
+            try:
+                piece = integrate(term, x)
+            except Exception as exc:
+                raise UnsolvableError("I couldn't integrate that term.") from exc
+            if isinstance(piece, Integral):
+                raise UnsolvableError("That term has no elementary antiderivative.")
+            cur = expand(cur - term + piece)
+            after = canonical(cur)
+            chain.append((op, canonical(term), before, after))
+            before = after
+        if not a:
+            final = canonical(cur + Symbol("C"))
+            chain.append(("add_integration_constant", "C", before, final))
+            result = canonical(anti) + " + C"
+            return CalculusFacts(
+                symbol="x", operation="integrate", result=result,
+                approximate=result, set_tag="ok", chain=tuple(chain),
+                interpretation=expr.canonical)
+        try:
+            lo, hi = to_sympy(a), to_sympy(b)
+            value = simplify(anti.subs(x, hi) - anti.subs(x, lo))
+        except Exception as exc:
+            raise ValidationError("Bounds must be numbers or constants.") from exc
+        after = canonical(value)
+        chain.append(("evaluate_bounds", f"{canonical(lo)} to {canonical(hi)}",
+                      before, after))
+        return CalculusFacts(
+            symbol="x", operation="definite_integrate", result=after,
+            approximate=str(N(value, 15)), set_tag="ok", a=canonical(lo),
+            b=canonical(hi), chain=tuple(chain), interpretation=expr.canonical)
+
+    def check_derivative(self, expr: str, symbol: str) -> bool:
+        """Finite differences at 3 points must match our symbolic derivative."""
+        try:
+            f = to_sympy(expr)
+            x = Symbol(symbol)
+            df = diff(f, x)
+            ok = 0
+            tried = 0
+            for x0 in (0.5, 1.5, -0.5):
+                try:
+                    h = 1e-5
+                    f0 = complex(N(f.subs(x, x0)))
+                    fp = complex(N(f.subs(x, x0 + h)))
+                    fm = complex(N(f.subs(x, x0 - h)))
+                    num = (fp - fm) / (2 * h)
+                    sym = complex(N(df.subs(x, x0)))
+                    if abs(num.imag) > 1e-6 or abs(sym.imag) > 1e-6:
+                        continue
+                    tried += 1
+                    if abs(sym.real - num.real) <= 1e-4 * max(1.0, abs(sym.real)):
+                        ok += 1
+                except Exception:
+                    continue
+            return tried >= 2 and ok == tried
+        except Exception:
+            return False
+
+    def check_antiderivative(self, anti: str, integrand: str, symbol: str) -> bool:
+        try:
+            x = Symbol(symbol)
+            back = simplify(diff(to_sympy(anti), x) - to_sympy(integrand))
+            return bool(back == 0)
+        except Exception:
+            return False
+
+    def check_definite(self, expr: str, symbol: str, a: str, b: str, candidate: str) -> bool:
+        """Composite Simpson with 200 panels must agree to 1e-6 relative."""
+        try:
+            f = to_sympy(expr)
+            x = Symbol(symbol)
+            lo, hi = float(N(to_sympy(a))), float(N(to_sympy(b)))
+            want = float(N(to_sympy(candidate)))
+            n = 200
+            h = (hi - lo) / n
+            total = 0.0
+            for i in range(n + 1):
+                y = float(N(f.subs(x, lo + h * i)))
+                total += (1 if i in (0, n) else (4 if i % 2 else 2)) * y
+            return abs(total * h / 3 - want) <= 1e-6 * max(1.0, abs(want))
         except Exception:
             return False
 

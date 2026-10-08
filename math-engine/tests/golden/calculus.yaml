@@ -1,0 +1,14 @@
+# Golden corpus — calculus (V2). Append-only.
+- input: "3x^2 + 2x + 5"
+  op: differentiate
+  exact: ["6*x + 2"]
+  ops: [apply_power_rule, apply_power_rule, apply_constant_rule]
+- input: "3x^2 + 2x"
+  op: integrate
+  exact: ["x**3 + x**2 + C"]
+- input: "2x"
+  op: definite_integrate
+  a: "0"
+  b: "3"
+  exact: ["9"]
+  ops: [integrate_power_term, evaluate_bounds]

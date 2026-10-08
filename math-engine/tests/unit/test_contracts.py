@@ -60,6 +60,21 @@ class FakeSolver(SolverPort):
     def solve_inequality(self, expr, domain=Domain.REALS):
         raise NotImplementedError("contract fakes cover linear only")
 
+    def differentiate(self, expr):
+        raise NotImplementedError("contract fakes cover linear only")
+
+    def integrate(self, expr, a="", b=""):
+        raise NotImplementedError("contract fakes cover linear only")
+
+    def check_derivative(self, expr, symbol):
+        return self._equality
+
+    def check_antiderivative(self, anti, integrand, symbol):
+        return self._equality
+
+    def check_definite(self, expr, symbol, a, b, candidate):
+        return self._equality
+
     def check_inequality(self, lhs, rhs, rel, symbol, candidate):
         return self._equality
 
