@@ -20,6 +20,8 @@ class Attempt:
 
 DIFFICULTY_ORDER = ("beginner", "basic", "intermediate", "advanced", "exam")
 UNLOCK_THRESHOLD = 80.0
+BKT_MASTERY = 0.95
+BKT_MIN_ATTEMPTS = 3
 
 
 def attempt_score(attempt: Attempt) -> float:
@@ -77,3 +79,11 @@ def unlocked_difficulties(topic: str, attempts: tuple[Attempt, ...],
         else:
             break
     return open_levels
+
+
+def bkt_gated_levels(bkt_p: float, n_attempts: int) -> list[str]:
+    """BKT-driven gates: with enough evidence, P(mastery) >= 0.95 opens everything
+    past beginner; otherwise fall back to one-step-ahead exploration."""
+    if n_attempts >= BKT_MIN_ATTEMPTS and bkt_p >= BKT_MASTERY:
+        return list(DIFFICULTY_ORDER)
+    return [DIFFICULTY_ORDER[0], DIFFICULTY_ORDER[1]]

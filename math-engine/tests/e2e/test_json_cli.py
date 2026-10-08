@@ -105,6 +105,22 @@ def test_practice_store_ops_round_trip():
     assert len(pending["result"]["due"]) == 1
 
 
+def test_bkt_gates_and_override_round_trip():
+    for _ in range(6):
+        run_requests([{"op": "practice_record", "topic": "quadratic",
+                       "difficulty": "basic", "correct": True, "hints_used": 0}])
+    dashboard = run_requests([{"op": "practice_dashboard"}])[0]
+    assert dashboard["result"]["bkt"]["quadratic"] > 0.9
+    assert dashboard["result"]["bkt_gates"]["quadratic"] == [
+        "beginner", "basic", "intermediate", "advanced", "exam"]
+    flagged = run_requests([{"op": "practice_override", "attempt_id": 1,
+                             "correct": False}])[0]
+    assert flagged["result"]["overridden"] == 1
+    missing = run_requests([{"op": "practice_override", "attempt_id": 999999,
+                             "correct": True}])[0]
+    assert missing["ok"] is False
+
+
 def test_content_ops_round_trip():
     sheet, spec, note, examples, terms, term = run_requests([
         {"op": "worksheet_generate", "topic": "linear", "difficulty": "basic",

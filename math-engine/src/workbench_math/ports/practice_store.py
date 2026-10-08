@@ -64,3 +64,17 @@ class PracticeStore(abc.ABC):
     @abc.abstractmethod
     def list_assignments(self) -> tuple[Assignment, ...]:
         raise NotImplementedError
+
+    @abc.abstractmethod
+    def get_bkt(self, topic: str) -> tuple[float, int]:
+        """Return (P(mastery), n_attempts) for a topic; (default P(L0), 0) if new."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def set_bkt(self, topic: str, p_mastery: float, n_attempts: int) -> None:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def record_override(self, attempt_id: int, correct: bool) -> bool:
+        """Teacher override of an auto-mark; returns True if the row existed."""
+        raise NotImplementedError

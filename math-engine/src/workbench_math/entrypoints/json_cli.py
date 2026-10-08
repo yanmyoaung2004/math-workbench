@@ -44,6 +44,8 @@ from ..ai.ocr import decode_image, ocr_provider
 from ..ai.openai_compat import OpenAICompatibleProvider
 from ..ai.provider import AIProviderError, StubProvider
 from ..ai.tutor import TutorService
+from ..practice.at_risk import detect as detect_risk
+from ..practice.bkt import BKTParams, track as bkt_track, update as bkt_update
 from ..practice.concepts import concept_for
 from ..practice.examples import examples_for
 from ..practice.generator import DIFFICULTIES, TOPICS, generate_questions
@@ -53,6 +55,7 @@ from ..practice.specmap import SPEC_POINTS, resolve_spec
 from ..practice.worksheet import build_worksheet
 from ..practice.mastery import (
     Attempt,
+    bkt_gated_levels,
     recommend,
     topic_mastery,
     unlocked_difficulties,
@@ -64,7 +67,7 @@ _OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
         "history_list", "history_clear", "practice_generate", "practice_score",
         "ai_explain", "ai_hint", "ai_mistake", "ai_reflect",
         "practice_record", "practice_dashboard", "review_due", "review_answer",
-        "progress_streak", "assignment_create", "assignment_list",
+        "progress_streak", "assignment_create", "assignment_list", "practice_override",
         "worksheet_generate", "spec_map", "concept_note", "practice_examples",
         "glossary_list", "glossary_get", "ocr_parse"}
 
@@ -139,7 +142,7 @@ def handle(request: dict) -> dict:
                   "ai_explain", "ai_hint", "ai_mistake", "ai_reflect",
                   "practice_record", "practice_dashboard", "review_due",
                   "review_answer", "progress_streak", "assignment_create",
-                  "assignment_list", "worksheet_generate", "spec_map",
+                  "assignment_list", "practice_override", "worksheet_generate", "spec_map",
                   "concept_note", "practice_examples", "glossary_list",
                   "glossary_get", "ocr_parse") and (
         not isinstance(raw, str) or not raw.strip()
@@ -231,9 +234,11 @@ def handle(request: dict) -> dict:
                 hints = int(request.get("hints_used", 0))
             except (TypeError, ValueError):
                 return _error_response(op, ValidationError.code, "hints_used must be an integer.")
+            correct = bool(request.get("correct", False))
             row = practice.record_attempt(
-                topic, difficulty, bool(request.get("correct", False)), hints,
-                str(request.get("mistake", "")))
+                topic, difficulty, correct, hints, str(request.get("mistake", "")))
+            prior_p, prior_n = practice.get_bkt(topic)
+            practice.set_bkt(topic, bkt_update(prior_p, correct), prior_n + 1)
             return {"ok": True, "op": op, "interpretation": "",
                     "result": {"recorded": row}}
         if op == "practice_dashboard":
@@ -246,12 +251,24 @@ def handle(request: dict) -> dict:
             for a in attempts:
                 if a.mistake:
                     by_mistake[a.mistake] = by_mistake.get(a.mistake, 0) + 1
+            topics = sorted({a.topic for a in scored}) or list(TOPICS)
+            bkt: dict[str, float] = {}
+            gates: dict[str, list[str]] = {}
+            for topic in topics:
+                if topic == "mixed":
+                    continue
+                p, n = practice.get_bkt(topic)
+                bkt[topic] = round(p, 4)
+                gates[topic] = bkt_gated_levels(p, n)
             return {"ok": True, "op": op, "interpretation": "",
                     "result": {"mastery": mastery,
                                "recommendation": recommend(mastery),
                                "unlocked": {t: unlocked_difficulties(t, scored)
                                             for t in sorted({a.topic for a in scored})},
+                               "bkt": bkt,
+                               "bkt_gates": gates,
                                "by_mistake": by_mistake,
+                               "at_risk": [asdict(f) for f in detect_risk(attempts)],
                                "attempts": len(attempts)}}
         if op == "review_due":
             today = str(request.get("today", ""))
@@ -309,6 +326,16 @@ def handle(request: dict) -> dict:
         if op == "assignment_list":
             return {"ok": True, "op": op, "interpretation": "",
                     "result": {"assignments": [asdict(a) for a in practice.list_assignments()]}}
+        if op == "practice_override":
+            try:
+                attempt_id = int(request.get("attempt_id", 0))
+            except (TypeError, ValueError):
+                return _error_response(op, ValidationError.code, "attempt_id must be an integer.")
+            changed = practice.record_override(attempt_id, bool(request.get("correct", False)))
+            if not changed:
+                return _error_response(op, ValidationError.code, f"No attempt with id {attempt_id}.")
+            return {"ok": True, "op": op, "interpretation": "",
+                    "result": {"overridden": attempt_id}}
         if op == "worksheet_generate":
             topic = str(request.get("topic", ""))
             difficulty = str(request.get("difficulty", ""))
