@@ -81,6 +81,33 @@ export default function ProgressScreen() {
         </Card>
       )}
 
+      {dashboard.data && (dashboard.data.at_risk ?? []).length > 0 && (
+        <Card className="p-5">
+          <h2 className="mb-2 font-semibold">Needs attention</h2>
+          <ul className="flex flex-col gap-1 text-sm">
+            {(dashboard.data.at_risk ?? []).map((risk, i) => (
+              <li key={i} className="rounded-lg bg-amber-500/10 p-2">
+                <span className="font-semibold">{risk.topic}: {risk.flag.replace(/-/g, " ")}</span>
+                <span className="block text-slate-600 dark:text-slate-300">{risk.reason}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      {dashboard.data && dashboard.data.bkt && Object.keys(dashboard.data.bkt).length > 0 && (
+        <Card className="p-5">
+          <h2 className="mb-2 font-semibold">Mastery model <span className="text-xs font-normal text-slate-500">(Bayesian — probability you have mastered each topic)</span></h2>
+          <ul className="flex flex-col gap-1 text-sm">
+            {Object.entries(dashboard.data.bkt).map(([topic, p]) => (
+              <li key={topic} className="flex justify-between border-b border-slate-100 py-1 dark:border-white/5">
+                <span>{topic}</span>
+                <span className="font-semibold">{Math.round(p * 100)}% · unlocks: {(dashboard.data?.bkt_gates?.[topic] ?? []).join(", ")}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
       <Card className="p-5">
         <h2 className="mb-2 font-semibold">Review due ({due.data?.due.length ?? 0})</h2>
         {(due.data?.due ?? []).length === 0 && (

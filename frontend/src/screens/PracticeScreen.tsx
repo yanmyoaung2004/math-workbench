@@ -62,6 +62,12 @@ export default function PracticeScreen() {
       return engine.worksheetGenerate(topic, difficulty, 10, Date.now() % 100000, true, sheetTitle);
     },
   });
+  const upNext = useMutation({
+    mutationFn: async () => {
+      const engine = await getEngine();
+      return engine.practiceNext(topic === "mixed" ? "linear" : topic, Date.now() % 100000);
+    },
+  });
 
   const questions: Question[] = generate.data?.questions ?? [];
 
@@ -200,6 +206,22 @@ export default function PracticeScreen() {
           )}
         </Card>
       )}
+
+      <Card className="p-5">
+        <h2 className="mb-1 font-semibold">Up next — picked for you</h2>
+        <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
+          The adaptive engine chooses your weakest unlocked material.
+        </p>
+        <Button disabled={upNext.isPending} onClick={() => upNext.mutate()}>
+          {upNext.isPending ? "Choosing…" : "What should I do next?"}
+        </Button>
+        {upNext.data && (
+          <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm dark:bg-white/5">
+            <span className="font-medium">{upNext.data.difficulty}: </span>
+            <MathNotation tex={upNext.data.prompt_latex} fallback={upNext.data.prompt} />
+          </p>
+        )}
+      </Card>
 
       <Card className="p-5">
         <h2 className="mb-2 font-semibold">Worksheet (printable)</h2>
