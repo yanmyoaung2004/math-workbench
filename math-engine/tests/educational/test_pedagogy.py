@@ -45,6 +45,10 @@ def test_every_rule_from_approved_vocabulary():
         "standard_quadratic_form", "discriminant", "quadratic_formula",
         "completing_the_square", "square_root_property", "elimination_method",
         "substitution_method", "inequality_sign_reversal",
+        "power_rule", "constant_rule", "trig_derivative",
+        "exponential_derivative", "chain_rule", "differentiation",
+        "power_rule_reversed", "constant_integral", "integration",
+        "integration_constant", "fundamental_theorem",
     }
     for op, (rule, _) in EXPLANATIONS.items():
         assert rule in approved, f"{op} uses unknown rule {rule!r}"

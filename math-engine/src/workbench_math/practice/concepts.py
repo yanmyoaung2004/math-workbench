@@ -55,6 +55,30 @@ CONCEPTS: dict[str, str] = {
     "inequality_sign_reversal":
         "Order flips when multiplying or dividing by a negative: on the number "
         "line, everything mirrors.",
+    "power_rule":
+        "d/dx[x^n] = n·x^(n−1): multiply by the power, then drop it by one.",
+    "constant_rule":
+        "Constants never change, so their rate of change is zero.",
+    "trig_derivative":
+        "Sine and cosine differentiate into each other (with a sign flip).",
+    "exponential_derivative":
+        "e^x is its own derivative — the unique function that reproduces itself.",
+    "chain_rule":
+        "For nested functions, differentiate outside-first, then multiply by "
+        "the derivative of the inside.",
+    "differentiation":
+        "Differentiation measures instantaneous rate of change.",
+    "power_rule_reversed":
+        "Integration reverses the power rule: raise the power by one, divide by it.",
+    "constant_integral":
+        "A constant accumulates linearly: ∫c dx = cx.",
+    "integration":
+        "Integration accumulates — it undoes differentiation.",
+    "integration_constant":
+        "Derivatives forget constants, so antiderivatives add +C for all of them.",
+    "fundamental_theorem":
+        "A definite integral is the antiderivative evaluated at the top bound "
+        "minus its value at the bottom bound.",
 }
 
 
