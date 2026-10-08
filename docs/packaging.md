@@ -56,10 +56,12 @@ correctly unscoped).
   window) is proven at `tauri dev`/bundle time, not by the launch smoke test.
   Run `npx tauri dev`, solve `2x + 5 = 17` in the Solver screen, and confirm
   `x = 6` with steps before release.
-- Auto-update: `tauri-plugin-updater` is initialized but inert (no endpoints,
-  no signing key). To enable: generate a key (`tauri signer generate`), host
-  release artifacts with `latest.json`, add `plugins.updater` endpoints+pubkey
-  to `tauri.conf.json`, and call `check()` from Settings. Unverified live.
+- Auto-update: NOT wired — `tauri-plugin-updater` panics at startup without
+  endpoints/signing configured (found by launch smoke test, exit 101), so the
+  plugin stays out until release signing exists. To enable later: add the dep,
+  generate a key (`tauri signer generate`), host release artifacts with
+  `latest.json`, add `plugins.updater` endpoints+pubkey to `tauri.conf.json`,
+  and call `check()` from Settings. Unverified live.
 
 ## Offline guarantees
 
