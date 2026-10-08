@@ -165,3 +165,29 @@ Final gates after rebuild: engine **187 passed, 1 skipped**; frontend tsc strict
 clean, vitest **13 passed**, `vite build` green; sidecar rebuilt and re-smoked
 (worksheet, concept, glossary, reflect ops); desktop exe relinked, app
 relaunched and responding. `yma/` research folder gitignored (private).
+
+---
+
+## 2026-10-07 — V2 feature batch (report: `yma/V2_RESEARCH.md`, private)
+
+| Commit | Task | Evidence |
+|--------|------|----------|
+| `cf11c39` | M1: mastery gates (80%), `ai_reflect` gate, mixed sets | mastery + e2e |
+| `b498f66` | Practice store: attempts, SM-2 reviews, assignments; dashboard/streak ops | store + e2e |
+| `6e5348e` | Worksheets, 12 spec codes, per-rule concept notes, live-proved examples, glossary | rule-coverage test |
+| `bd860a4` | OCR seam: refusing stub, capped base64, `ocr_parse` | stub honesty tests |
+| `bb38854` | BKT-lite (closed-form updates, hand-computed tests), at-risk flags, grading override; practice DB v1→v2 migration | update-equation tests |
+| `3a072a0` | IRT calibration + `practice_next` adaptive selector | selection unit + e2e |
+| `eed2c2b` | Mathpix OCR provider (loopback-proven wire format) + tutor bench harness + local-model guide | loopback + bench run |
+| `e8508f3` | Updater plugin wired (later reverted — see below) | release link |
+| `f1eb8d1` | Calculus: term-wise diff/integral steps, finite-difference/FTC/Simpson checks, FTC round-trip property | golden + property |
+| `c373748` | Matrices/vectors: per-entry multiply steps, 2x2 det/inverse chains, identity verification | associativity properties |
+| `984b907` | Geometry engine: formula-first steps, physical validation, presentation LaTeX | exact/approx tests |
+| `ad5f91b` + `b4673ba` | Advanced screen (calculus/matrix/geometry + SVG diagrams), BKT/at-risk progress, up-next panel, expand/factorise tabs, a11y pass | vitest 13, tsc strict |
+| `7eb0b38` | Concept notes + vocabulary for calculus rules | coverage tests |
+| `119d7ce` | Reverted updater plugin: unconfigured init panics at startup (exit 101, found by launch smoke test); recipe stays docs-only | app relaunched healthy |
+
+Final gates: engine **218 passed, 1 skipped**; frontend tsc strict clean,
+vitest **13 passed**, `vite build` green; sidecar rebuilt and re-smoked
+(differentiate, inverse, geometry, practice_next); exe relinked, app
+relaunched and responding. **Tag `v2`.**
