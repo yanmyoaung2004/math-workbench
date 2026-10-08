@@ -39,6 +39,14 @@ from ..graph.intersections import intersect
 from ..graph.models import SampleRequest
 from ..graph.sampler import sample
 from ..graph.tables import table_values
+from ..linalg.matrices import (
+    cross as vector_cross,
+    determinant as matrix_determinant,
+    dot as vector_dot,
+    inverse as matrix_inverse,
+    magnitude as vector_magnitude,
+    multiply as matrix_multiply,
+)
 from ..ai.hints import hint as hint_at_level
 from ..ai.mistakes import classify as classify_mistake
 from ..ai.ocr import decode_image, ocr_provider
@@ -73,7 +81,9 @@ _OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
         "practice_next",
         "worksheet_generate", "spec_map", "concept_note", "practice_examples",
         "glossary_list", "glossary_get", "ocr_parse",
-        "differentiate", "integrate", "definite_integrate"}
+        "differentiate", "integrate", "definite_integrate",
+        "matrix_multiply", "matrix_determinant", "matrix_inverse",
+        "vector_dot", "vector_cross", "vector_magnitude"}
 
 # Ops whose verified results are recorded in local history (calculation log).
 _SAVED_OPS = {"solve_linear", "solve_quadratic", "solve_system", "solve_inequality",
@@ -150,7 +160,9 @@ def handle(request: dict) -> dict:
                   "assignment_list", "practice_override", "practice_next", "worksheet_generate", "spec_map",
                   "concept_note", "practice_examples", "glossary_list",
                   "glossary_get", "ocr_parse", "differentiate", "integrate",
-                  "definite_integrate") and (
+                  "definite_integrate", "matrix_multiply", "matrix_determinant",
+                  "matrix_inverse", "vector_dot", "vector_cross",
+                  "vector_magnitude") and (
         not isinstance(raw, str) or not raw.strip()
     ):
         return _error_response(op, ValidationError.code, "Please enter a mathematical expression or equation.")
@@ -183,6 +195,29 @@ def handle(request: dict) -> dict:
             if not isinstance(a, str) or not isinstance(b, str):
                 return _error_response(op, ValidationError.code, "Send bounds a and b as strings.")
             return _solution_to_response(op, integrate_expression(raw, parser, solver, a, b), raw)
+        if op in ("matrix_multiply", "matrix_determinant", "matrix_inverse",
+                  "vector_dot", "vector_cross", "vector_magnitude"):
+            matrix_a = request.get("matrix_a", [])
+            matrix_b = request.get("matrix_b", [])
+            vector_a = request.get("vector_a", [])
+            vector_b = request.get("vector_b", [])
+            try:
+                if op == "matrix_multiply":
+                    res = matrix_multiply(matrix_a, matrix_b)
+                elif op == "matrix_determinant":
+                    res = matrix_determinant(matrix_a)
+                elif op == "matrix_inverse":
+                    res = matrix_inverse(matrix_a)
+                elif op == "vector_dot":
+                    res = vector_dot(vector_a, vector_b)
+                elif op == "vector_cross":
+                    res = vector_cross(vector_a, vector_b)
+                else:
+                    res = vector_magnitude(vector_a)
+            except MathEngineError as exc:
+                return _error_response(op, exc.code, str(exc))
+            return {"ok": True, "op": op, "interpretation": res.input_display,
+                    "result": asdict(res)}
         if op == "sample_graph":
             try:
                 req = SampleRequest(

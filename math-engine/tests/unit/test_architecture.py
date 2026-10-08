@@ -26,17 +26,20 @@ ALLOWED = {
     # use domain/ports plus the shared sympy plumbing in adapters/_sympy_common,
     # but never adapter classes, application use-cases, or entrypoints.
     "graph": {"graph", "domain", "ports", "adapters"},
+    # linalg/ follows the same rule as graph/ (engine-internal math subdomain).
+    "linalg": {"linalg", "domain", "ports", "adapters"},
     # practice/ orchestrates application use-cases with a seeded stdlib RNG.
     "practice": {"practice", "application", "ports", "domain"},
     # ai/ explains verified DTOs; stdlib only (provider HTTP via urllib).
     "ai": {"ai", "domain", "ports"},
-    "entrypoints": {"entrypoints", "adapters", "application", "ports", "domain", "graph", "practice", "ai"},
+    "entrypoints": {"entrypoints", "adapters", "application", "ports", "domain", "graph", "practice", "ai", "linalg"},
 }
 # Third-party distributions each layer may import (stdlib always allowed).
-# Only adapters (None = any) and graph opt in; every other layer is stdlib-only.
+# Only adapters (None = any), graph, and linalg opt in; every other layer is stdlib-only.
 THIRD_PARTY = {
     "adapters": None,  # any (sympy, numpy, ...)
     "graph": {"sympy", "numpy"},
+    "linalg": {"sympy"},
 }
 
 
@@ -80,11 +83,11 @@ def test_import_direction():
                         violations.append(
                             f"{path}: {layer} must not depend on {dep_layer}"
                         )
-                    # graph/ may only touch shared plumbing, never adapter classes
-                    if layer == "graph" and dep_layer == "adapters":
+                    # graph/linalg may only touch shared plumbing, never adapter classes
+                    if layer in ("graph", "linalg") and dep_layer == "adapters":
                         if target[1:2] != ("_sympy_common",):
                             violations.append(
-                                f"{path}: graph may only use adapters._sympy_common"
+                                f"{path}: {layer} may only use adapters._sympy_common"
                             )
                 elif node.module:
                     top = node.module.split(".")[0]
@@ -106,11 +109,11 @@ def test_import_direction():
 
 
 def test_sympy_confined_to_engine_layers():
-    """Only adapters/ and graph/ may import sympy or numpy (AST-precise)."""
+    """Only adapters/, graph/, and linalg/ may import sympy or numpy (AST-precise)."""
     offenders: list[str] = []
     for path in sorted(ROOT.rglob("*.py")):
         parts = path.relative_to(ROOT).parts
-        if "adapters" in parts or "graph" in parts:
+        if "adapters" in parts or "graph" in parts or "linalg" in parts:
             continue
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
@@ -120,4 +123,4 @@ def test_sympy_confined_to_engine_layers():
             elif isinstance(node, ast.ImportFrom):
                 if (node.module or "").split(".")[0] == "sympy":
                     offenders.append(str(path))
-    assert not offenders, f"sympy/numpy leaked outside adapters+graph: {offenders}"
+    assert not offenders, f"sympy/numpy leaked outside adapters+graph+linalg: {offenders}"
