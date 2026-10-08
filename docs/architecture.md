@@ -51,6 +51,8 @@ No microservices. No network for core math. See ADR-0003 for why sidecar over lo
 - `application/` → domain + ports only.
 - `adapters/` → anything (ONLY unrestricted layer: sympy, sqlite3, urllib-adjacent).
 - `graph/` → domain + ports + `adapters/_sympy_common` plumbing only; sympy+numpy allowed.
+- `linalg/` → same rule as graph/ (matrices/vectors; sympy allowed).
+- `geometry/` → same rule as graph/ (formula engine; sympy allowed).
 - `practice/` → application + ports + domain (seeded stdlib RNG orchestration).
 - `ai/` → domain + ports; stdlib only (provider HTTP via urllib).
 - `entrypoints/` → wires everything above into the JSON protocol (validation,

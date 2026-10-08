@@ -205,6 +205,49 @@ export class MockEngineService extends BaseEngineService {
     if (op === "ocr_parse") {
       return { ok: false, op, error: { code: "VALIDATION_ERROR", message: "No OCR engine is configured." } };
     }
+    if (op === "differentiate") {
+      return { ok: true, op, interpretation: "3*x**2 + 2*x + 5", result: {
+        ...LINEAR, interpretation: "3*x**2 + 2*x + 5", interpretation_latex: "3 x^{2} + 2 x + 5",
+        exact: ["6*x + 2"], exact_latex: ["6 x + 2"],
+      } };
+    }
+    if (op === "integrate" || op === "definite_integrate") {
+      return { ok: true, op, interpretation: "2*x", result: {
+        ...LINEAR, interpretation: "2*x", interpretation_latex: "2 x",
+        exact: ["x**2 + C"], exact_latex: ["x^{2} + C"],
+      } };
+    }
+    if (op === "matrix_multiply" || op === "matrix_determinant" || op === "matrix_inverse") {
+      return { ok: true, op, interpretation: "[[1, 2], [3, 4]]", result: {
+        operation: op, input_display: "[[1, 2], [3, 4]]",
+        result: [["19", "22"], ["43", "50"]], result_latex: "\\begin{pmatrix}19 & 22\\\\43 & 50\\end{pmatrix}",
+        steps: [{ operation: "compute_entry", explanation: "Mock step.", math: "1*5 + 2*7 = 19" }],
+        verification: "verified",
+      } };
+    }
+    if (op === "vector_dot") {
+      return { ok: true, op, interpretation: "[1, 2, 3] . [4, 5, 6]", result: {
+        operation: "dot", input_display: "[1, 2, 3] . [4, 5, 6]",
+        result: [["32"]], result_latex: "32", steps: [], verification: "verified",
+      } };
+    }
+    if (op === "geometry_solve") {
+      return { ok: true, op, interpretation: "circle: area", result: {
+        shape: "circle", find: "area", inputs: [["r", "7"]],
+        result_exact: "49*pi", result_latex: "49 \\pi", result_approx: 153.94,
+        steps: [{ operation: "state_formula", explanation: "Start from the formula.", math: "A = πr²", math_latex: "A" }],
+        verification: "verified",
+      } };
+    }
+    if (op === "practice_next") {
+      return { ok: true, op, interpretation: "", result: {
+        topic: "linear", difficulty: "basic", prompt: "3x + 7 = 25",
+        expected: ["6"], prompt_latex: "3 x + 7 = 25", expected_latex: ["6"],
+      } };
+    }
+    if (op === "practice_override") {
+      return { ok: true, op, interpretation: "", result: { overridden: 1 } };
+    }
     throw new EngineError("VALIDATION_ERROR", `Mock has no fixture for op ${op}.`);
   }
 }

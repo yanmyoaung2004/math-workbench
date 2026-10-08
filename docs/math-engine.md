@@ -11,7 +11,7 @@ One request line → one response line. UTF-8, `\n`-terminated.
 
 ```jsonc
 {
-  "op": "solve_linear" | "solve_quadratic" | "solve_system" | "solve_inequality" | "simplify" | "expand" | "factorise" | "parse" | "sample_graph" | "analyze_graph" | "table_values" | "solve_intersection" | "history_list" | "history_clear" | "practice_generate" | "practice_score" | "ai_explain" | "ai_hint" | "ai_mistake" | "ai_reflect" | "practice_record" | "practice_dashboard" | "review_due" | "review_answer" | "progress_streak" | "assignment_create" | "assignment_list" | "worksheet_generate" | "spec_map" | "concept_note" | "practice_examples" | "glossary_list" | "glossary_get" | "ocr_parse",
+  "op": "solve_linear" | "solve_quadratic" | "solve_system" | "solve_inequality" | "simplify" | "expand" | "factorise" | "parse" | "sample_graph" | "analyze_graph" | "table_values" | "solve_intersection" | "history_list" | "history_clear" | "practice_generate" | "practice_score" | "ai_explain" | "ai_hint" | "ai_mistake" | "ai_reflect" | "practice_record" | "practice_dashboard" | "review_due" | "review_answer" | "progress_streak" | "assignment_create" | "assignment_list" | "practice_override" | "practice_next" | "worksheet_generate" | "spec_map" | "concept_note" | "practice_examples" | "glossary_list" | "glossary_get" | "ocr_parse" | "differentiate" | "integrate" | "definite_integrate" | "matrix_multiply" | "matrix_determinant" | "matrix_inverse" | "vector_dot" | "vector_cross" | "vector_magnitude" | "geometry_solve",
   "input": "2x + 5 = 17",   // raw user string, required (except solve_system)
   "equations": ["2x + y = 7", "x - y = 2"],  // solve_system only: exactly 2
   "domain": "reals",         // optional, default "reals" (GCSE); "complex" opts in
@@ -39,8 +39,19 @@ Practice (deterministic, offline): `practice_generate` (`topic` incl. `mixed`,
 `difficulty`, `n ≤ 50`, `seed` → engine-verified numeric questions; same seed = same paper)
 and `practice_score` (`attempts` with optional `difficulty` → per-topic mastery % with hint penalty,
 `unlocked` difficulty gates per topic, weakest-topic recommendation; transparent, no ML).
+Adaptive: `practice_next` (`topic`, `seed` → IRT-calibrated next question);
+`practice_override` (`attempt_id`, `correct` → teacher correction of auto-marks).
+Dashboard (`practice_dashboard`) also returns `bkt` mastery probabilities,
+`bkt_gates`, `difficulty_rates`, and `at_risk` flags with reasons.
 Image input: `ocr_parse` (`image_base64` → recognized text parsed to a kind +
 interpretation; stub backend refuses honestly until an OCR engine is connected).
+Calculus: `differentiate` / `integrate` (indefinite, `+ C`) /
+`definite_integrate` (`a`, `b` strings → value + `evaluate_bounds` step).
+Linear algebra: `matrix_multiply` / `matrix_determinant` / `matrix_inverse`
+(`matrix_a`, `matrix_b` nested lists; inverse verified by A·A⁻¹ = I),
+`vector_dot` / `vector_cross` / `vector_magnitude` (`vector_a`, `vector_b`).
+Geometry: `geometry_solve` (`shape`, `find`, `inputs` object → formula-first
+steps with exact + approximate).
 
 Presentation LaTeX: every math string ships a `*_latex` twin rendered by SymPy
 (`2*x**2` → `2 x^{2}`, `1/2` → `\frac{1}{2}`), structure-preserving so operand

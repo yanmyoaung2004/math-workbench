@@ -98,6 +98,52 @@ export interface Dashboard {
   unlocked: Record<string, string[]>;
   by_mistake: Record<string, number>;
   attempts: number;
+  bkt?: Record<string, number>;
+  bkt_gates?: Record<string, string[]>;
+  difficulty_rates?: Record<string, Record<string, number>>;
+  at_risk?: { topic: string; flag: string; reason: string }[];
+}
+
+export interface MatrixStep {
+  operation: string;
+  explanation: string;
+  math: string;
+}
+
+export interface MatrixResult {
+  operation: string;
+  input_display: string;
+  result: string[][] | string[];
+  result_latex: string;
+  steps: MatrixStep[];
+  verification: string;
+}
+
+export interface GeometryStep {
+  operation: string;
+  explanation: string;
+  math: string;
+  math_latex: string;
+}
+
+export interface GeometryResult {
+  shape: string;
+  find: string;
+  inputs: [string, string][];
+  result_exact: string;
+  result_approx: number | null;
+  steps: GeometryStep[];
+  verification: string;
+  result_latex: string;
+}
+
+export interface PracticeNext {
+  topic: string;
+  difficulty: string;
+  prompt: string;
+  expected: string[];
+  prompt_latex: string;
+  expected_latex: string[];
 }
 
 export interface ReviewItem {

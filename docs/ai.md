@@ -9,6 +9,7 @@ explains verified mathematics and never solves, overrides, or edits steps.
 |--------|------|
 | `provider.py` | `ProviderPort.complete()` + `StubProvider` (deterministic, offline) |
 | `openai_compat.py` | OpenAI-compatible REST via stdlib urllib (OpenAI/OpenRouter/local); key from `WORKBENCH_AI_KEY` |
+| `mathpix.py` | Mathpix OCR provider (paid API, key at runtime); wire format loopback-proven, live key owed |
 | `tutor.py` | `TutorService.explain()` builds grounded prompt (verified result + steps + attempt + mistake + hints-shown + level); provider failure → `provider="fallback"` deterministic summary |
 | `hints.py` | L1 conceptual → L2 operational → L3 explicit → L4 next step → L5 full solution, from verified steps; L1–L3 never leak the answer (tested) |
 | `mistakes.py` | `classify(expected_step, student_after, identical)` → bracket/sign/arithmetic/unparseable + minimal correction; `None` when correct |

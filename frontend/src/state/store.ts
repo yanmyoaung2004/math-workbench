@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type Screen = "solver" | "graph" | "practice" | "progress" | "reference" | "history" | "settings";
+export type Screen = "solver" | "graph" | "practice" | "progress" | "reference" | "advanced" | "history" | "settings";
 
 interface AppState {
   screen: Screen;

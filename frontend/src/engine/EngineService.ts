@@ -4,8 +4,11 @@ import type {
   Assignment,
   Dashboard,
   EngineResponse,
+  GeometryResult,
   HistoryEntry,
+  MatrixResult,
   PracticeAttempt,
+  PracticeNext,
   Question,
   ReviewItem,
   SampleResult,
@@ -137,6 +140,46 @@ export abstract class BaseEngineService {
 
   ocrParse(imageBase64: string): Promise<{ text: string; kind: string; interpretation: string }> {
     return this.result({ op: "ocr_parse", image_base64: imageBase64 });
+  }
+
+  differentiate(input: string): Promise<SolutionResult> {
+    return this.result({ op: "differentiate", input });
+  }
+
+  integrate(input: string): Promise<SolutionResult> {
+    return this.result({ op: "integrate", input });
+  }
+
+  definiteIntegrate(input: string, a: string, b: string): Promise<SolutionResult> {
+    return this.result({ op: "definite_integrate", input, a, b });
+  }
+
+  matrixMultiply(matrixA: number[][], matrixB: number[][]): Promise<MatrixResult> {
+    return this.result({ op: "matrix_multiply", matrix_a: matrixA, matrix_b: matrixB });
+  }
+
+  matrixDeterminant(matrixA: number[][]): Promise<MatrixResult> {
+    return this.result({ op: "matrix_determinant", matrix_a: matrixA });
+  }
+
+  matrixInverse(matrixA: number[][]): Promise<MatrixResult> {
+    return this.result({ op: "matrix_inverse", matrix_a: matrixA });
+  }
+
+  vectorDot(vectorA: number[], vectorB: number[]): Promise<MatrixResult> {
+    return this.result({ op: "vector_dot", vector_a: vectorA, vector_b: vectorB });
+  }
+
+  geometrySolve(shape: string, find: string, inputs: Record<string, string>): Promise<GeometryResult> {
+    return this.result({ op: "geometry_solve", shape, find, inputs });
+  }
+
+  practiceNext(topic: string, seed: number): Promise<PracticeNext> {
+    return this.result({ op: "practice_next", topic, seed });
+  }
+
+  practiceOverride(attemptId: number, correct: boolean): Promise<{ overridden: number }> {
+    return this.result({ op: "practice_override", attempt_id: attemptId, correct });
   }
 
   historyList(limit = 50): Promise<{ entries: HistoryEntry[] }> {
